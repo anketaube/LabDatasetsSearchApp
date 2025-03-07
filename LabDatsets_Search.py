@@ -41,28 +41,75 @@ def main():
 
     # Filter-Sidebar
     with st.sidebar:
-        st.header("Filteroptionen")
+        st.header("Suchfilter")
 
-        # Freitextsuche
-        suchbegriff = st.text_input("Suchbegriff (z.B. in Beschreibung)")
+        # Volltextsuche in der Beschreibung
+        beschreibung_suchbegriff = st.text_input("Suche in Beschreibung")
 
-        # Kategorie 1 Filter
-        kategorie1_filter = st.multiselect("Kategorie", options=df['Kategorie 1'].unique())
-
-        # Verfügbarkeit Filter
-        verfuegbarkeit_filter = st.selectbox("Online frei verfügbar", options=['Alle'] + list(df['Online frei verfügbar'].unique()))
+        # Filter für jede Spalte
+        datensetname_filter = st.multiselect("Datensetname", options=df['Datensetname'].unique())
+        anzahl_datensätze_filter = st.multiselect("Anzahl Datensätze", options=df['Anzahl Datensätze'].unique())
+        metadaten_filter = st.multiselect("Metadaten", options=df['Metadaten'].unique())
+        digitale_objekte_filter = st.multiselect("Digitale Objekte", options=df['Digitale Objekte '].unique())
+        online_frei_verfügbar_filter = st.multiselect("Online frei verfügbar", options=df['Online frei verfügbar'].unique())
+        download_filter = st.multiselect("Download", options=df['Download'].unique())
+        sru_filter = st.multiselect("SRU", options=df['SRU'].unique())
+        oai_filter = st.multiselect("OAI", options=df['OAI'].unique())
+        marc21_xml_filter = st.multiselect("MARC21-xml", options=df['MARC21-xml'].unique())
+        mets_mods_filter = st.multiselect("METS/MODS", options=df['METS/MODS'].unique())
+        download_größe_gb_filter = st.multiselect("Download Größe (GB)", options=df['Download Größe (GB)'].unique())
+        art_des_inhalts_filter = st.multiselect("Art des Inhalts", options=df['Art des Inhalts'].unique())
+        zeitraum_der_daten_filter = st.multiselect("Zeitraum der Daten ", options=df['Zeitraum der Daten '].unique())
+        aktualisierung_der_daten_filter = st.multiselect("Aktualisierung der Daten ", options=df['Aktualisierung der Daten '].unique())
+        kategorie_1_filter = st.multiselect("Kategorie 1", options=df['Kategorie 1'].unique())
+        kategorie_2_filter = st.multiselect("Kategorie 2", options=df['Kategorie 2'].unique())
+        kategorie_3_filter = st.multiselect("Kategorie 3", options=df['Kategorie 3'].unique())
+        sammlung_im_katalog_filter = st.multiselect("Sammlung im Katalog", options=df['Sammlung im Katalog'].unique())
 
     # Daten filtern
     filtered_df = df.copy()
 
-    if suchbegriff:
-        filtered_df = filtered_df[filtered_df.astype(str).apply(lambda row: row.str.contains(suchbegriff, case=False).any(), axis=1)]
+    # Volltextsuche in Beschreibung
+    if beschreibung_suchbegriff:
+        filtered_df = filtered_df[filtered_df['Beschreibung'].str.contains(beschreibung_suchbegriff, case=False, na=False)]
 
-    if kategorie1_filter:
-        filtered_df = filtered_df[filtered_df['Kategorie 1'].isin(kategorie1_filter)]
-
-    if verfuegbarkeit_filter != 'Alle':
-        filtered_df = filtered_df[filtered_df['Online frei verfügbar'] == verfuegbarkeit_filter]
+    # Filter anwenden
+    if datensetname_filter:
+        filtered_df = filtered_df[filtered_df['Datensetname'].isin(datensetname_filter)]
+    if anzahl_datensätze_filter:
+        filtered_df = filtered_df[filtered_df['Anzahl Datensätze'].isin(anzahl_datensätze_filter)]
+    if metadaten_filter:
+        filtered_df = filtered_df[filtered_df['Metadaten'].isin(metadaten_filter)]
+    if digitale_objekte_filter:
+        filtered_df = filtered_df[filtered_df['Digitale Objekte '].isin(digitale_objekte_filter)]
+    if online_frei_verfügbar_filter:
+        filtered_df = filtered_df[filtered_df['Online frei verfügbar'].isin(online_frei_verfügbar_filter)]
+    if download_filter:
+        filtered_df = filtered_df[filtered_df['Download'].isin(download_filter)]
+    if sru_filter:
+        filtered_df = filtered_df[filtered_df['SRU'].isin(sru_filter)]
+    if oai_filter:
+        filtered_df = filtered_df[filtered_df['OAI'].isin(oai_filter)]
+    if marc21_xml_filter:
+        filtered_df = filtered_df[filtered_df['MARC21-xml'].isin(marc21_xml_filter)]
+    if mets_mods_filter:
+        filtered_df = filtered_df[filtered_df['METS/MODS'].isin(mets_mods_filter)]
+    if download_größe_gb_filter:
+        filtered_df = filtered_df[filtered_df['Download Größe (GB)'].isin(download_größe_gb_filter)]
+    if art_des_inhalts_filter:
+        filtered_df = filtered_df[filtered_df['Art des Inhalts'].isin(art_des_inhalts_filter)]
+    if zeitraum_der_daten_filter:
+        filtered_df = filtered_df[filtered_df['Zeitraum der Daten '].isin(zeitraum_der_daten_filter)]
+    if aktualisierung_der_daten_filter:
+        filtered_df = filtered_df[filtered_df['Aktualisierung der Daten '].isin(aktualisierung_der_daten_filter)]
+    if kategorie_1_filter:
+        filtered_df = filtered_df[filtered_df['Kategorie 1'].isin(kategorie_1_filter)]
+    if kategorie_2_filter:
+        filtered_df = filtered_df[filtered_df['Kategorie 2'].isin(kategorie_2_filter)]
+    if kategorie_3_filter:
+        filtered_df = filtered_df[filtered_df['Kategorie 3'].isin(kategorie_3_filter)]
+    if sammlung_im_katalog_filter:
+        filtered_df = filtered_df[filtered_df['Sammlung im Katalog'].isin(sammlung_im_katalog_filter)]
 
     # Ergebnisanzeige
     st.header("Suchergebnisse")
