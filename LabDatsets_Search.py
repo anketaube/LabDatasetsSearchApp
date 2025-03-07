@@ -47,24 +47,24 @@ def main():
     col1, col2, col3 = st.columns(3)
 
     # 1. Zeile
-    kategorie_filter = col1.multiselect("Kategorie", options=df['Kategorie 1'].dropna().unique())
-    datensetname_filter = col2.multiselect("Datensetname", options=df['Datensetname'].unique())
-    col3.empty()  # Leere Spalte für das Layout
+    datensetname_filter = col1.multiselect("Datensetname", options=df['Datensetname'].unique())
+    anzahl_datensätze_filter = col2.multiselect("Anzahl Datensätze", options=df['Anzahl Datensätze'].unique())
+    digitale_objekte_filter = col3.multiselect("Digitale Objekte", options=df['Digitale Objekte '].unique())
 
     # 2. Zeile
-    datenformat_filter = col1.multiselect("Datenformat", options=df['Datenformat'].unique())
-    digitale_objekte_filter = col2.multiselect("Digitale Objekte", options=df['Digitale Objekte '].unique())
-    online_frei_verfügbar_filter = col3.multiselect("Online frei verfügbar", options=df['Online frei verfügbar'].unique())
+    online_frei_verfügbar_filter = col1.multiselect("Online frei verfügbar", options=df['Online frei verfügbar'].unique())
+    download_filter = col2.multiselect("Download", options=df['Download'].unique())
+    schnittstelle_filter = col3.multiselect("Schnittstelle", options=df['Schnittstelle'].unique())
 
     # 3. Zeile
-    anzahl_datensätze_filter = col1.multiselect("Anzahl Datensätze", options=df['Anzahl Datensätze'].unique())
-    art_des_inhalts_filter = col2.multiselect("Art des Inhalts", options=df['Art des Inhalts'].unique())
-    zeitraum_der_daten_filter = col3.multiselect("Zeitraum der Daten", options=df['Zeitraum der Daten '].unique())
+    datenformat_filter = col1.multiselect("Datenformat", options=df['Datenformat'].unique())
+    download_größe_gb_filter = col2.multiselect("Download Größe (GB)", options=df['Download Größe (GB)'].unique())
+    art_des_inhalts_filter = col3.multiselect("Art des Inhalts", options=df['Art des Inhalts'].unique())
 
     # 4. Zeile
-    download_filter = col1.multiselect("Download", options=df['Download'].unique())
-    download_größe_gb_filter = col2.multiselect("Download Größe (GB)", options=df['Download Größe (GB)'].unique())
-    schnittstelle_filter = col3.multiselect("Schnittstelle", options=df['Schnittstelle'].unique())
+    zeitraum_der_daten_filter = col1.multiselect("Zeitraum der Daten", options=df['Zeitraum der Daten '].unique())
+    aktualisierung_der_daten_filter = col2.multiselect("Aktualisierung der Daten", options=df['Aktualisierung der Daten '].unique())
+    sammlung_im_katalog_filter = col3.multiselect("Sammlung im Katalog", options=df['Sammlung im Katalog'].unique())
 
     # Datensetbeschreibung-Filter (am Ende)
     beschreibung_suchbegriff = st.text_input("Suche in Datensetbeschreibung")
@@ -77,14 +77,10 @@ def main():
         filtered_df = filtered_df[filtered_df['Beschreibung'].str.contains(beschreibung_suchbegriff, case=False, na=False)]
 
     # Filter anwenden
-    if kategorie_filter:
-        filtered_df = filtered_df[
-            filtered_df['Kategorie 1'].isin(kategorie_filter) |
-            filtered_df['Kategorie 2'].isin(kategorie_filter) |
-            filtered_df['Kategorie 3'].isin(kategorie_filter)
-        ]
     if datensetname_filter:
         filtered_df = filtered_df[filtered_df['Datensetname'].isin(datensetname_filter)]
+    if anzahl_datensätze_filter:
+        filtered_df = filtered_df[filtered_df['Anzahl Datensätze'].isin(anzahl_datensätze_filter)]
     if digitale_objekte_filter:
         filtered_df = filtered_df[filtered_df['Digitale Objekte '].isin(digitale_objekte_filter)]
     if online_frei_verfügbar_filter:
@@ -101,9 +97,11 @@ def main():
         filtered_df = filtered_df[filtered_df['Art des Inhalts'].isin(art_des_inhalts_filter)]
     if zeitraum_der_daten_filter:
         filtered_df = filtered_df[filtered_df['Zeitraum der Daten '].isin(zeitraum_der_daten_filter)]
-    if anzahl_datensätze_filter:
-        filtered_df = filtered_df[filtered_df['Anzahl Datensätze'].isin(anzahl_datensätze_filter)]
-    
+    if aktualisierung_der_daten_filter:
+        filtered_df = filtered_df[filtered_df['Aktualisierung der Daten '].isin(aktualisierung_der_daten_filter)]
+    if sammlung_im_katalog_filter:
+        filtered_df = filtered_df[filtered_df['Sammlung im Katalog'].isin(sammlung_im_katalog_filter)]
+
     # Ergebnisanzeige
     st.header("Suchergebnisse")
     st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
@@ -120,4 +118,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
