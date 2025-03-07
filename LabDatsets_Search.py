@@ -39,31 +39,38 @@ def main():
     if df is None:
         st.stop()
 
-    # **Filterbereich oberhalb der Tabelle**
+    # Filterbereich oberhalb der Tabelle
     st.header("Suchfilter")
 
     # Layout für die Filter
-    col1, col2, col3 = st.columns(3)  # Drei Spalten für Filter
+    col1, col2 = st.columns([2, 1])  # Unterschiedliche Breiten
 
-    # Volltextsuche in der Beschreibung
-    beschreibung_suchbegriff = col1.text_input("Suche in Beschreibung")
+    # Zeile 1
+    kategorie_filter = col1.multiselect("Kategorie", options=df['Kategorie 1'].dropna().unique())  # Kombinierter Filter
+    datensetname_filter = col1.multiselect("Datensetname", options=df['Datensetname'].unique())  # Breite Spalte
 
-    # Kombinierter Kategorien-Filter
-    alle_kategorien = df['Kategorie 1'].dropna().unique().tolist() + \
-                       df['Kategorie 2'].dropna().unique().tolist() + \
-                       df['Kategorie 3'].dropna().unique().tolist()
-    alle_kategorien = list(set(alle_kategorien))  # Duplikate entfernen
-    kategorie_filter = col2.multiselect("Kategorien (1, 2, 3)", options=alle_kategorien)
+    # Zeile 2
+    art_des_inhalts_filter = col1.multiselect("Art des Inhalts", options=df['Art des Inhalts'].unique())
+    zeitraum_der_daten_filter = col2.multiselect("Zeitraum der Daten", options=df['Zeitraum der Daten '].unique())
 
-    # Filter für andere Spalten (beispielhaft)
-    datensetname_filter = col3.multiselect("Datensetname", options=df['Datensetname'].unique())
-    anzahl_datensätze_filter = col1.multiselect("Anzahl Datensätze", options=df['Anzahl Datensätze'].unique())
+    # Zeile 3
+    digitale_objekte_filter = col1.multiselect("Digitale Objekte", options=df['Digitale Objekte '].unique())
     online_frei_verfügbar_filter = col2.multiselect("Online frei verfügbar", options=df['Online frei verfügbar'].unique())
+    anzahl_datensätze_filter = col1.multiselect("Anzahl Datensätze", options=df['Anzahl Datensätze'].unique())
+
+    # Zeile 4
+    datenformat_filter = col1.multiselect("Datenformat", options=df['Datenformat'].unique())
+    download_filter = col2.multiselect("Download", options=df['Download'].unique())
+    schnittstelle_filter = col1.multiselect("Schnittstelle", options=df['Schnittstelle'].unique())
+    download_größe_gb_filter = col2.multiselect("Download Größe (GB)", options=df['Download Größe (GB)'].unique())
+
+    # Datensetbeschreibung-Filter
+    beschreibung_suchbegriff = st.text_input("Suche in Datensetbeschreibung")
 
     # Daten filtern
     filtered_df = df.copy()
 
-    # Volltextsuche in Beschreibung
+    # Datensetbeschreibung
     if beschreibung_suchbegriff:
         filtered_df = filtered_df[filtered_df['Beschreibung'].str.contains(beschreibung_suchbegriff, case=False, na=False)]
 
@@ -75,15 +82,29 @@ def main():
             filtered_df['Kategorie 3'].isin(kategorie_filter)
         ]
 
-    # Andere Filter anwenden (beispielhaft)
+    # Andere Filter anwenden
     if datensetname_filter:
         filtered_df = filtered_df[filtered_df['Datensetname'].isin(datensetname_filter)]
-    if anzahl_datensätze_filter:
-        filtered_df = filtered_df[filtered_df['Anzahl Datensätze'].isin(anzahl_datensätze_filter)]
+    if art_des_inhalts_filter:
+        filtered_df = filtered_df[filtered_df['Art des Inhalts'].isin(art_des_inhalts_filter)]
+    if zeitraum_der_daten_filter:
+        filtered_df = filtered_df[filtered_df['Zeitraum der Daten '].isin(zeitraum_der_daten_filter)]
+    if digitale_objekte_filter:
+        filtered_df = filtered_df[filtered_df['Digitale Objekte '].isin(digitale_objekte_filter)]
     if online_frei_verfügbar_filter:
         filtered_df = filtered_df[filtered_df['Online frei verfügbar'].isin(online_frei_verfügbar_filter)]
+    if anzahl_datensätze_filter:
+        filtered_df = filtered_df[filtered_df['Anzahl Datensätze'].isin(anzahl_datensätze_filter)]
+    if datenformat_filter:
+        filtered_df = filtered_df[filtered_df['Datenformat'].isin(datenformat_filter)]
+    if download_filter:
+        filtered_df = filtered_df[filtered_df['Download'].isin(download_filter)]
+    if schnittstelle_filter:
+        filtered_df = filtered_df[filtered_df['Schnittstelle'].isin(schnittstelle_filter)]
+    if download_größe_gb_filter:
+        filtered_df = filtered_df[filtered_df['Download Größe (GB)'].isin(download_größe_gb_filter)]
 
-    # **Ergebnisanzeige**
+    # Ergebnisanzeige
     st.header("Suchergebnisse")
     st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
     st.dataframe(filtered_df)
