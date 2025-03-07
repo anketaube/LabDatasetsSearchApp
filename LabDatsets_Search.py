@@ -6,7 +6,7 @@ from io import BytesIO
 
 # 1. KORREKTE RAW-URL FESTLEGEN (Beispiel-URL - muss angepasst werden!)
 # Muss genau diesem Muster folgen:
-GITHUB_EXCEL_URL = "https://raw.githubusercontent.com/[DEIN_BENUTZERNAME]/[DEIN_REPO]/[BRANCH]/Datensets_Suche_Test.xlsx"
+GITHUB_EXCEL_URL = "https://raw.githubusercontent.com/anketaube/LabDatasetsSearchApp/main/Datensets_Suche_Test.xlsx"
 
 def load_data():
     try:
