@@ -15,6 +15,9 @@ def load_data():
 
         excel_file = BytesIO(response.content)
         df = pd.read_excel(excel_file, engine='openpyxl', sheet_name='Tabelle2')
+
+        # Leere Werte durch NaN ersetzen
+        df = df.replace('', pd.NA)
         return df
 
     except requests.exceptions.RequestException as e:
@@ -47,24 +50,24 @@ def main():
     col1, col2, col3 = st.columns(3)
 
     # 1. Zeile
-    datensetname_filter = col1.multiselect("Datensetname", options=df['Datensetname'].unique())
-    anzahl_datensätze_filter = col2.multiselect("Anzahl Datensätze", options=df['Anzahl Datensätze'].unique())
-    digitale_objekte_filter = col3.multiselect("Digitale Objekte", options=df['Digitale Objekte '].unique())
+    datensetname_filter = col1.multiselect("Datensetname", options=df['Datensetname'].dropna().unique())
+    anzahl_datensätze_filter = col2.multiselect("Anzahl Datensätze", options=df['Anzahl Datensätze'].dropna().unique())
+    digitale_objekte_filter = col3.multiselect("Digitale Objekte", options=df['Digitale Objekte '].dropna().unique())
 
     # 2. Zeile
-    online_frei_verfügbar_filter = col1.multiselect("Online frei verfügbar", options=df['Online frei verfügbar'].unique())
-    download_filter = col2.multiselect("Download", options=df['Download'].unique())
-    schnittstelle_filter = col3.multiselect("Schnittstelle", options=df['Schnittstelle'].unique())
+    online_frei_verfügbar_filter = col1.multiselect("Online frei verfügbar", options=df['Online frei verfügbar'].dropna().unique())
+    download_filter = col2.multiselect("Download", options=df['Download'].dropna().unique())
+    schnittstelle_filter = col3.multiselect("Schnittstelle", options=df['Schnittstelle'].dropna().unique())
 
     # 3. Zeile
-    datenformat_filter = col1.multiselect("Datenformat", options=df['Datenformat'].unique())
-    download_größe_gb_filter = col2.multiselect("Download Größe (GB)", options=df['Download Größe (GB)'].unique())
-    art_des_inhalts_filter = col3.multiselect("Art des Inhalts", options=df['Art des Inhalts'].unique())
+    datenformat_filter = col1.multiselect("Datenformat", options=df['Datenformat'].dropna().unique())
+    download_größe_gb_filter = col2.multiselect("Download Größe (GB)", options=df['Download Größe (GB)'].dropna().unique())
+    art_des_inhalts_filter = col3.multiselect("Art des Inhalts", options=df['Art des Inhalts'].dropna().unique())
 
     # 4. Zeile
-    zeitraum_der_daten_filter = col1.multiselect("Zeitraum der Daten", options=df['Zeitraum der Daten '].unique())
-    aktualisierung_der_daten_filter = col2.multiselect("Aktualisierung der Daten", options=df['Aktualisierung der Daten '].unique())
-    sammlung_im_katalog_filter = col3.multiselect("Sammlung im Katalog", options=df['Sammlung im Katalog'].unique())
+    zeitraum_der_daten_filter = col1.multiselect("Zeitraum der Daten", options=df['Zeitraum der Daten '].dropna().unique())
+    aktualisierung_der_daten_filter = col2.multiselect("Aktualisierung der Daten", options=df['Aktualisierung der Daten '].dropna().unique())
+    sammlung_im_katalog_filter = col3.multiselect("Sammlung im Katalog", options=df['Sammlung im Katalog'].dropna().unique())
 
     # Datensetbeschreibung-Filter (am Ende)
     beschreibung_suchbegriff = st.text_input("Suche in Datensetbeschreibung")
