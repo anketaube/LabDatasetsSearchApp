@@ -1,78 +1,65 @@
-# -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
 import requests
 from io import BytesIO
 
-# 1. KORREKTE RAW-URL FESTLEGEN (Beispiel-URL - muss angepasst werden!)
-# Muss genau diesem Muster folgen:
+# 1. URL anpassen (Beispiel - ersetzen!)
 GITHUB_EXCEL_URL = "https://raw.githubusercontent.com/anketaube/LabDatasetsSearchApp/main/Datensets_Suche_Test.xlsx"
 
 def load_data():
     try:
-        # 2. URL-Überprüfung
-        if not GITHUB_EXCEL_URL.startswith("https://raw.githubusercontent.com/"):
-            st.error("Falsche URL-Struktur! Muss mit 'https://raw.githubusercontent.com/' beginnen")
-            return None
-
+        st.info(f"Lade Daten von: `{GITHUB_EXCEL_URL}`")  # URL anzeigen
         response = requests.get(GITHUB_EXCEL_URL)
-        
-        # 3. HTTP-Status prüfen
-        if response.status_code != 200:
-            st.error(f"Datei nicht gefunden (HTTP-Status {response.status_code})")
-            return None
+        response.raise_for_status()  # Fehler bei HTTP-Fehlern
 
-        # 4. Dateiheader überprüfen
-        content = response.content
-        if len(content) < 4:
-            st.error("Leere Datei erhalten")
-            return None
-            
-        # 5. Magic Number für Excel prüfen (50 4B 03 04 = PK.. für ZIP)
-        if content[0:4] != b'\x50\x4B\x03\x04':
-            st.error("Keine gültige Excel-Datei (falscher Dateiheader)")
-            st.write("Erhaltene Header-Bytes:", content[0:4])
-            return None
+        excel_file = BytesIO(response.content)
+        df = pd.read_excel(excel_file, engine='openpyxl', sheet_name='Tabelle2')
+        return df
 
-        # 6. Mit beiden Engines versuchen
-        try:
-            return pd.read_excel(
-                BytesIO(content),
-                engine='openpyxl',
-                sheet_name='Tabelle2'
-            )
-        except:
-            return pd.read_excel(
-                BytesIO(content),
-                engine='xlrd',
-                sheet_name='Tabelle2'
-            )
-
+    except requests.exceptions.RequestException as e:
+        st.error(f"Verbindungsfehler: {e}")
+        return None
     except Exception as e:
-        st.error(f"Technischer Fehler: {str(e)}")
-        st.markdown("""
-        **Fehlerbehebung:**
-        1. RAW-URL direkt im Browser testen
-        2. Excel-Datei lokal mit LibreOffice öffnen/speichern
-        3. GitHub-Link muss exakt sein (Groß-/Kleinschreibung!)
-        """)
+        st.error(f"Fehler beim Laden der Excel-Datei: {e}")
+        st.info("Stellen Sie sicher, dass die Datei eine gültige Excel-Datei ist und das Format .xlsx hat.")
         return None
 
 def main():
-    st.set_page_config(page_title="DNB-Datensuche", layout="wide")
-    st.title("📚 Deutsche Nationalbibliothek - Datenset-Suche")
-    
-    # Debug-Info
-    with st.expander("🔧 Technische Prüfung"):
-        st.write(f"GitHub-URL: `{GITHUB_EXCEL_URL}`")
-        st.write(f"Python Version: {pd.__version__}")
-    
+    st.title("DNB-Datenset-Suche")
+
     df = load_data()
     if df is None:
-        st.warning("Bitte Dateizugang prüfen und Seite neu laden")
-        return
+        st.stop()
 
-    # Restlicher Code bleibt gleich...
+    # Filter-Sidebar
+    with st.sidebar:
+        st.header("Filter")
+        
+        # Freitextsuche
+        suchbegriff = st.text_input("Suchbegriff")
+
+        # Kategorie 1 Filter
+        kategorie1_filter = st.multiselect("Kategorie 1", options=df['Kategorie 1'].unique())
+
+        # Verfügbarkeit Filter
+        verfuegbarkeit_filter = st.selectbox("Online verfügbar", options=['Alle'] + list(df['Online frei verfügbar'].unique()))
+
+    # Daten filtern
+    filtered_df = df.copy()
+
+    if suchbegriff:
+        filtered_df = filtered_df[filtered_df.astype(str).apply(lambda row: row.str.contains(suchbegriff, case=False).any(), axis=1)]
+
+    if kategorie1_filter:
+        filtered_df = filtered_df[filtered_df['Kategorie 1'].isin(kategorie1_filter)]
+
+    if verfuegbarkeit_filter != 'Alle':
+        filtered_df = filtered_df[filtered_df['Online frei verfügbar'] == verfuegbarkeit_filter]
+
+    # Ergebnisanzeige
+    st.header("Ergebnisse")
+    st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
+    st.dataframe(filtered_df)
 
 if __name__ == "__main__":
     main()
