@@ -45,9 +45,9 @@ def main():
     # Session State für Filter initialisieren
     filter_keys = [
         'datensetname', 'kategorie', 'art_des_inhalts',
-        'zeitraum', 'aktualisierung',
-        'datenformat', 'digitale_objekte', 'online_frei',
-        'download_größe', 'schnittstelle'
+        'zeitraum', 'aktualisierung', 'datenformat',
+        'digitale_objekte', 'online_frei', 'download_größe',
+        'schnittstelle'
     ]
     for key in filter_keys:
         if key not in st.session_state:
@@ -65,10 +65,10 @@ def main():
         kategorie_werte.extend(df[col].dropna().unique())
     kategorie_werte = list(set(kategorie_werte))  # Duplikate entfernen
 
-    # Filter-Widgets in 4 Zeilen
+    # Filter-Widgets in 2 Zeilen
     with st.container():
-        # Zeile 1 (3 Spalten)
-        col1, col2, col3 = st.columns(3)
+        # Zeile 1 (5 Spalten)
+        col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
             st.session_state.datensetname = st.multiselect(
                 "Datensetname",
@@ -87,9 +87,6 @@ def main():
                 options=df['Art des Inhalts'].dropna().unique(),
                 default=st.session_state.art_des_inhalts
             )
-
-        # Zeile 2 (2 Spalten)
-        col4, col5 = st.columns(2)
         with col4:
             st.session_state.zeitraum = st.multiselect(
                 "Zeitraum der Daten",
@@ -103,8 +100,8 @@ def main():
                 default=st.session_state.aktualisierung
             )
 
-        # Zeile 3 (3 Spalten)
-        col6, col7, col8 = st.columns(3)
+        # Zeile 2 (5 Spalten)
+        col6, col7, col8, col9, col10 = st.columns(5)
         with col6:
             st.session_state.datenformat = st.multiselect(
                 "Datenformat",
@@ -123,9 +120,6 @@ def main():
                 options=df['Online frei verfügbar'].dropna().unique(),
                 default=st.session_state.online_frei
             )
-
-        # Zeile 4 (2 Spalten)
-        col9, col10 = st.columns(2)
         with col9:
             st.session_state.download_größe = st.multiselect(
                 "Download Größe (GB)",
