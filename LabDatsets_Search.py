@@ -56,6 +56,15 @@ def main():
     # Filterbereich
     st.header("Suchfilter")
 
+    # Kategorie-Spalten identifizieren
+    kategorie_spalten = [col for col in df.columns if 'Kategorie' in col]
+
+    # Eindeutige Werte aus allen Kategorie-Spalten sammeln
+    kategorie_werte = []
+    for col in kategorie_spalten:
+        kategorie_werte.extend(df[col].dropna().unique())
+    kategorie_werte = list(set(kategorie_werte))  # Duplikate entfernen
+
     # Filter-Widgets in 4 Zeilen
     with st.container():
         # Zeile 1 (3 Spalten)
@@ -69,7 +78,7 @@ def main():
         with col2:
             st.session_state.kategorie = st.multiselect(
                 "Kategorie",
-                options=df['Kategorie'].dropna().unique(),
+                options=kategorie_werte,
                 default=st.session_state.kategorie
             )
         with col3:
@@ -153,10 +162,16 @@ def main():
             'Schnittstelle': st.session_state.schnittstelle
         }
 
+        # Kategorie-Filter anwenden (kombiniert)
+        if st.session_state.kategorie:
+            filtered_df = filtered_df[filtered_df[kategorie_spalten].isin(st.session_state.kategorie).any(axis=1)]
+
+        # Andere Filter anwenden
         for column, values in filter_conditions.items():
-            if values:
+            if column not in ['Kategorie'] and values:  # Kategorie wurde bereits behandelt
                 filtered_df = filtered_df[filtered_df[column].isin(values)]
 
+        # Datensetbeschreibung
         if beschreibung_suchbegriff:
             filtered_df = filtered_df[filtered_df['Beschreibung'].str.contains(
                 beschreibung_suchbegriff, case=False, na=False
