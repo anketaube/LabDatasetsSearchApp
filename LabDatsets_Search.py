@@ -4,22 +4,17 @@ import requests
 from io import BytesIO
 import io
 
-# 1. URL anpassen (Beispiel - ersetzen!)
 GITHUB_EXCEL_URL = "https://raw.githubusercontent.com/anketaube/LabDatasetsSearchApp/main/Datensets_Suche_Test.xlsx"
 
 def load_data():
     try:
-        st.info(f"Lade Daten von: `{GITHUB_EXCEL_URL}`")  # URL anzeigen
+        st.info(f"Lade Daten von: `{GITHUB_EXCEL_URL}`")
         response = requests.get(GITHUB_EXCEL_URL)
-        response.raise_for_status()  # Fehler bei HTTP-Fehlern
-
+        response.raise_for_status()
         excel_file = BytesIO(response.content)
         df = pd.read_excel(excel_file, engine='openpyxl', sheet_name='Tabelle2')
-
-        # Leere Werte durch NaN ersetzen
         df = df.replace('', pd.NA)
         return df
-
     except requests.exceptions.RequestException as e:
         st.error(f"Verbindungsfehler: {e}")
         return None
@@ -29,83 +24,147 @@ def load_data():
         return None
 
 def download_csv(df):
-    """Generiert eine CSV-Datei und gibt einen Download-Button zurück."""
-    csv = df.to_csv(index=False, encoding='utf-8')  # UTF-8 encoding
+    csv = df.to_csv(index=False, encoding='utf-8')
     b = io.BytesIO()
     b.write(csv.encode('utf-8'))
     return b
 
 def main():
-    st.set_page_config(layout="wide")  # Breite der Seite maximieren
+    st.set_page_config(layout="wide")
     st.title("📚 DNBLab Datensetsuche")
-
-    df = load_data()
-    if df is None:
-        st.stop()
-
-    # Filterbereich oberhalb der Tabelle
+    
+    # Daten laden
+    if 'original_df' not in st.session_state:
+        df = load_data()
+        if df is None:
+            st.stop()
+        st.session_state.original_df = df
+    else:
+        df = st.session_state.original_df
+    
+    # Filterbereich
     st.header("Suchfilter")
+    
+    # Session State für Filter initialisieren
+    filter_keys = [
+        'datensetname', 'kategorie', 'art_des_inhalts',
+        'zeitraum', 'aktualisierung', 
+        'datenformat', 'digitale_objekte', 'online_frei',
+        'download_größe', 'schnittstelle'
+    ]
+    for key in filter_keys:
+        if key not in st.session_state:
+            st.session_state[key] = []
 
-    # Layout für die Filter (3 Spalten)
-    col1, col2, col3 = st.columns(3)
+    # Filter-Widgets in 4 Zeilen
+    with st.container():
+        # Zeile 1 (3 Spalten)
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.session_state.datensetname = st.multiselect(
+                "Datensetname",
+                options=df['Datensetname'].dropna().unique(),
+                default=st.session_state.datensetname
+            )
+        with col2:
+            st.session_state.kategorie = st.multiselect(
+                "Kategorie",
+                options=df['Kategorie'].dropna().unique(),
+                default=st.session_state.kategorie
+            )
+        with col3:
+            st.session_state.art_des_inhalts = st.multiselect(
+                "Art des Inhalts",
+                options=df['Art des Inhalts'].dropna().unique(),
+                default=st.session_state.art_des_inhalts
+            )
 
-    # 1. Zeile
-    datensetname_filter = col1.multiselect("Datensetname", options=df['Datensetname'].dropna().unique())
-    anzahl_datensätze_filter = col2.multiselect("Anzahl Datensätze", options=df['Anzahl Datensätze'].dropna().unique())
-    digitale_objekte_filter = col3.multiselect("Digitale Objekte", options=df['Digitale Objekte '].dropna().unique())
+        # Zeile 2 (2 Spalten)
+        col4, col5 = st.columns(2)
+        with col4:
+            st.session_state.zeitraum = st.multiselect(
+                "Zeitraum der Daten",
+                options=df['Zeitraum der Daten '].dropna().unique(),
+                default=st.session_state.zeitraum
+            )
+        with col5:
+            st.session_state.aktualisierung = st.multiselect(
+                "Aktualisierung der Daten",
+                options=df['Aktualisierung der Daten '].dropna().unique(),
+                default=st.session_state.aktualisierung
+            )
 
-    # 2. Zeile
-    online_frei_verfügbar_filter = col1.multiselect("Online frei verfügbar", options=df['Online frei verfügbar'].dropna().unique())
-    download_filter = col2.multiselect("Download", options=df['Download'].dropna().unique())
-    schnittstelle_filter = col3.multiselect("Schnittstelle", options=df['Schnittstelle'].dropna().unique())
+        # Zeile 3 (3 Spalten)
+        col6, col7, col8 = st.columns(3)
+        with col6:
+            st.session_state.datenformat = st.multiselect(
+                "Datenformat",
+                options=df['Datenformat'].dropna().unique(),
+                default=st.session_state.datenformat
+            )
+        with col7:
+            st.session_state.digitale_objekte = st.multiselect(
+                "Digitale Objekte",
+                options=df['Digitale Objekte '].dropna().unique(),
+                default=st.session_state.digitale_objekte
+            )
+        with col8:
+            st.session_state.online_frei = st.multiselect(
+                "Online frei verfügbar",
+                options=df['Online frei verfügbar'].dropna().unique(),
+                default=st.session_state.online_frei
+            )
 
-    # 3. Zeile
-    datenformat_filter = col1.multiselect("Datenformat", options=df['Datenformat'].dropna().unique())
-    download_größe_gb_filter = col2.multiselect("Download Größe (GB)", options=df['Download Größe (GB)'].dropna().unique())
-    art_des_inhalts_filter = col3.multiselect("Art des Inhalts", options=df['Art des Inhalts'].dropna().unique())
+        # Zeile 4 (2 Spalten)
+        col9, col10 = st.columns(2)
+        with col9:
+            st.session_state.download_größe = st.multiselect(
+                "Download Größe (GB)",
+                options=df['Download Größe (GB)'].dropna().unique(),
+                default=st.session_state.download_größe
+            )
+        with col10:
+            st.session_state.schnittstelle = st.multiselect(
+                "Schnittstelle",
+                options=df['Schnittstelle'].dropna().unique(),
+                default=st.session_state.schnittstelle
+            )
 
-    # 4. Zeile
-    zeitraum_der_daten_filter = col1.multiselect("Zeitraum der Daten", options=df['Zeitraum der Daten '].dropna().unique())
-    aktualisierung_der_daten_filter = col2.multiselect("Aktualisierung der Daten", options=df['Aktualisierung der Daten '].dropna().unique())
-    sammlung_im_katalog_filter = col3.multiselect("Sammlung im Katalog", options=df['Sammlung im Katalog'].dropna().unique())
+    # Apply-Button
+    apply_filter = st.button("Filter anwenden")
 
-    # Datensetbeschreibung-Filter (am Ende)
+    # Freitextsuche unterhalb des Buttons
     beschreibung_suchbegriff = st.text_input("Suche in Datensetbeschreibung")
 
-    # Daten filtern
+    # Filterung nur bei Button-Klick oder Suchbegriff-Änderung
     filtered_df = df.copy()
+    
+    if apply_filter or beschreibung_suchbegriff:
+        # Anwenden der Multiselect-Filter
+        filter_conditions = {
+            'Datensetname': st.session_state.datensetname,
+            'Kategorie': st.session_state.kategorie,
+            'Art des Inhalts': st.session_state.art_des_inhalts,
+            'Zeitraum der Daten ': st.session_state.zeitraum,
+            'Aktualisierung der Daten ': st.session_state.aktualisierung,
+            'Datenformat': st.session_state.datenformat,
+            'Digitale Objekte ': st.session_state.digitale_objekte,
+            'Online frei verfügbar': st.session_state.online_frei,
+            'Download Größe (GB)': st.session_state.download_größe,
+            'Schnittstelle': st.session_state.schnittstelle
+        }
 
-    # Datensetbeschreibung
-    if beschreibung_suchbegriff:
-        filtered_df = filtered_df[filtered_df['Beschreibung'].str.contains(beschreibung_suchbegriff, case=False, na=False)]
+        for column, values in filter_conditions.items():
+            if values:
+                filtered_df = filtered_df[filtered_df[column].isin(values)]
 
-    # Filter anwenden
-    if datensetname_filter:
-        filtered_df = filtered_df[filtered_df['Datensetname'].isin(datensetname_filter)]
-    if anzahl_datensätze_filter:
-        filtered_df = filtered_df[filtered_df['Anzahl Datensätze'].isin(anzahl_datensätze_filter)]
-    if digitale_objekte_filter:
-        filtered_df = filtered_df[filtered_df['Digitale Objekte '].isin(digitale_objekte_filter)]
-    if online_frei_verfügbar_filter:
-        filtered_df = filtered_df[filtered_df['Online frei verfügbar'].isin(online_frei_verfügbar_filter)]
-    if download_filter:
-        filtered_df = filtered_df[filtered_df['Download'].isin(download_filter)]
-    if schnittstelle_filter:
-        filtered_df = filtered_df[filtered_df['Schnittstelle'].isin(schnittstelle_filter)]
-    if datenformat_filter:
-        filtered_df = filtered_df[filtered_df['Datenformat'].isin(datenformat_filter)]
-    if download_größe_gb_filter:
-        filtered_df = filtered_df[filtered_df['Download Größe (GB)'].isin(download_größe_gb_filter)]
-    if art_des_inhalts_filter:
-        filtered_df = filtered_df[filtered_df['Art des Inhalts'].isin(art_des_inhalts_filter)]
-    if zeitraum_der_daten_filter:
-        filtered_df = filtered_df[filtered_df['Zeitraum der Daten '].isin(zeitraum_der_daten_filter)]
-    if aktualisierung_der_daten_filter:
-        filtered_df = filtered_df[filtered_df['Aktualisierung der Daten '].isin(aktualisierung_der_daten_filter)]
-    if sammlung_im_katalog_filter:
-        filtered_df = filtered_df[filtered_df['Sammlung im Katalog'].isin(sammlung_im_katalog_filter)]
+        # Anwenden der Textsuche
+        if beschreibung_suchbegriff:
+            filtered_df = filtered_df[filtered_df['Beschreibung'].str.contains(
+                beschreibung_suchbegriff, case=False, na=False
+            )]
 
-    # Ergebnisanzeige
+    # Ergebnisse anzeigen
     st.header("Suchergebnisse")
     st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
     st.dataframe(filtered_df, use_container_width=True)
