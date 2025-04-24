@@ -57,10 +57,8 @@ def main():
         kategorie_werte.update(df[col].dropna().unique())
     kategorie_werte = sorted([str(x) for x in kategorie_werte if str(x).strip() != ''])
 
-    # Kommagetrennte Spalten
     dateiformat_spalte = next((col for col in df.columns if 'dateiformat' in col.lower()), None)
     volltext_spalte = next((col for col in df.columns if 'volltext' in col.lower()), None)
-
     dateiformat_werte = extract_unique_multiselect_options(df[dateiformat_spalte]) if dateiformat_spalte else []
     volltext_werte = extract_unique_multiselect_options(df[volltext_spalte]) if volltext_spalte else []
 
@@ -75,57 +73,60 @@ def main():
 
     # Filterbereich
     st.header("Suchfilter")
-    with st.container():
-        col1, col2, col3, col4, col5 = st.columns(5)
-        with col1:
-            dsname_col = next((col for col in df.columns if 'datensetname' in col.lower()), None)
-            st.session_state.datensetname = st.multiselect(
-                "Datensetname",
-                options=sorted(df[dsname_col].dropna().unique()) if dsname_col else [],
-                default=st.session_state.datensetname
-            )
-        with col2:
-            st.session_state.kategorie = st.multiselect(
-                "Kategorie",
-                options=kategorie_werte,
-                default=st.session_state.kategorie
-            )
-        with col3:
-            zeitraum_col = next((col for col in df.columns if 'zeitraum' in col.lower()), None)
-            st.session_state.zeitraum = st.multiselect(
-                "Zeitraum der Daten",
-                options=sorted(df[zeitraum_col].dropna().unique()) if zeitraum_col else [],
-                default=st.session_state.zeitraum
-            )
-        with col4:
-            meta_col = next((col for col in df.columns if 'metadatenformat' in col.lower()), None)
-            st.session_state.metadatenformat = st.multiselect(
-                "Metadatenformat",
-                options=sorted(df[meta_col].dropna().unique()) if meta_col else [],
-                default=st.session_state.metadatenformat
-            )
-        with col5:
-            bezugsweg_col = next((col for col in df.columns if 'bezugsweg' in col.lower()), None)
-            st.session_state.bezugsweg = st.multiselect(
-                "Bezugsweg",
-                options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [],
-                default=st.session_state.bezugsweg
-            )
+    # Erste Zeile: Multiselects in einer Reihe
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
+        dsname_col = next((col for col in df.columns if 'datensetname' in col.lower()), None)
+        st.session_state.datensetname = st.multiselect(
+            "Datensetname",
+            options=sorted(df[dsname_col].dropna().unique()) if dsname_col else [],
+            default=st.session_state.datensetname
+        )
+    with col2:
+        st.session_state.kategorie = st.multiselect(
+            "Kategorie",
+            options=kategorie_werte,
+            default=st.session_state.kategorie
+        )
+    with col3:
+        zeitraum_col = next((col for col in df.columns if 'zeitraum' in col.lower()), None)
+        st.session_state.zeitraum = st.multiselect(
+            "Zeitraum der Daten",
+            options=sorted(df[zeitraum_col].dropna().unique()) if zeitraum_col else [],
+            default=st.session_state.zeitraum
+        )
+    with col4:
+        meta_col = next((col for col in df.columns if 'metadatenformat' in col.lower()), None)
+        st.session_state.metadatenformat = st.multiselect(
+            "Metadatenformat",
+            options=sorted(df[meta_col].dropna().unique()) if meta_col else [],
+            default=st.session_state.metadatenformat
+        )
+    with col5:
+        bezugsweg_col = next((col for col in df.columns if 'bezugsweg' in col.lower()), None)
+        st.session_state.bezugsweg = st.multiselect(
+            "Bezugsweg",
+            options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [],
+            default=st.session_state.bezugsweg
+        )
 
-    # Checkboxen für Dateiformat und Volltext-Verfügbarkeit (UND-Verknüpfung)
-    st.markdown("#### Dateiformat")
-    selected_dateiformate = []
-    for val in dateiformat_werte:
-        if st.checkbox(val, key="dateiformat_" + val, value=(val in st.session_state.dateiformat)):
-            selected_dateiformate.append(val)
-    st.session_state.dateiformat = selected_dateiformate
+    # Zweite Zeile: Dateiformat und Volltext-Verfügbarkeit nebeneinander
+    col6, col7 = st.columns(2)
+    with col6:
+        st.markdown("**Dateiformat**")
+        selected_dateiformate = []
+        for val in dateiformat_werte:
+            if st.checkbox(val, key="dateiformat_" + val, value=(val in st.session_state.dateiformat)):
+                selected_dateiformate.append(val)
+        st.session_state.dateiformat = selected_dateiformate
 
-    st.markdown("#### Volltext-Verfügbarkeit")
-    selected_volltext = []
-    for val in volltext_werte:
-        if st.checkbox(val, key="volltext_" + val, value=(val in st.session_state.volltext)):
-            selected_volltext.append(val)
-    st.session_state.volltext = selected_volltext
+    with col7:
+        st.markdown("**Volltext-Verfügbarkeit**")
+        selected_volltext = []
+        for val in volltext_werte:
+            if st.checkbox(val, key="volltext_" + val, value=(val in st.session_state.volltext)):
+                selected_volltext.append(val)
+        st.session_state.volltext = selected_volltext
 
     # Apply-Button
     apply_filter = st.button("Übernehmen")
@@ -157,16 +158,18 @@ def main():
 
         # Dateiformat (kommagetrennte Inhalte, UND-Verknüpfung)
         if st.session_state.dateiformat and dateiformat_spalte:
-            mask = filtered_df[dateiformat_spalte].dropna().apply(
-                lambda x: all(fmt in [v.strip() for v in str(x).split(',')] for fmt in st.session_state.dateiformat)
-            )
+            def all_dateiformat_selected(cell):
+                cell_values = [v.strip() for v in str(cell).split(',')]
+                return all(fmt in cell_values for fmt in st.session_state.dateiformat)
+            mask = filtered_df[dateiformat_spalte].apply(all_dateiformat_selected)
             filtered_df = filtered_df[mask]
 
         # Volltext-Verfügbarkeit (kommagetrennte Inhalte, UND-Verknüpfung)
         if st.session_state.volltext and volltext_spalte:
-            mask = filtered_df[volltext_spalte].dropna().apply(
-                lambda x: all(vt in [v.strip() for v in str(x).split(',')] for vt in st.session_state.volltext)
-            )
+            def all_volltext_selected(cell):
+                cell_values = [v.strip() for v in str(cell).split(',')]
+                return all(vt in cell_values for vt in st.session_state.volltext)
+            mask = filtered_df[volltext_spalte].apply(all_volltext_selected)
             filtered_df = filtered_df[mask]
 
         # Freitextsuche in Beschreibung
