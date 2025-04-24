@@ -4,7 +4,7 @@ import requests
 from io import BytesIO
 import io
 
-GITHUB_EXCEL_URL = "https://raw.githubusercontent.com/anketaube/LabDatasetsSearchApp/main/Datensets_Suche_Test.xlsx"
+GITHUB_EXCEL_URL = "https://raw.githubusercontent.com/anketaube/LabDatasetsSearchApp/main/Datensets_Suche_Test_neu.xlsx"
 
 def load_data():
     try:
@@ -44,10 +44,8 @@ def main():
 
     # Session State für Filter initialisieren
     filter_keys = [
-        'datensetname', 'kategorie', 'art_des_inhalts',
-        'zeitraum', 'aktualisierung', 'datenformat',
-        'digitale_objekte', 'online_frei', 'download_größe',
-        'schnittstelle'
+        'datensetname', 'kategorie', 'zeitraum',
+        'metadatenformat', 'bezugsweg'
     ]
     for key in filter_keys:
         if key not in st.session_state:
@@ -56,16 +54,6 @@ def main():
     # Filterbereich
     st.header("Suchfilter")
 
-    # Kategorie-Spalten identifizieren
-    kategorie_spalten = [col for col in df.columns if 'Kategorie' in col]
-
-    # Eindeutige Werte aus allen Kategorie-Spalten sammeln
-    kategorie_werte = []
-    for col in kategorie_spalten:
-        kategorie_werte.extend(df[col].dropna().unique())
-    kategorie_werte = list(set(kategorie_werte))  # Duplikate entfernen
-
-    # Filter-Widgets in 2 Zeilen
     with st.container():
         # Zeile 1 (5 Spalten)
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -78,59 +66,26 @@ def main():
         with col2:
             st.session_state.kategorie = st.multiselect(
                 "Kategorie",
-                options=kategorie_werte,
+                options=df['Kategorie'].dropna().unique(),
                 default=st.session_state.kategorie
             )
         with col3:
-            st.session_state.art_des_inhalts = st.multiselect(
-                "Art des Inhalts",
-                options=df['Art des Inhalts'].dropna().unique(),
-                default=st.session_state.art_des_inhalts
-            )
-        with col4:
             st.session_state.zeitraum = st.multiselect(
                 "Zeitraum der Daten",
-                options=df['Zeitraum der Daten '].dropna().unique(),
+                options=df['Zeitraum der Daten'].dropna().unique(),
                 default=st.session_state.zeitraum
             )
+        with col4:
+            st.session_state.metadatenformat = st.multiselect(
+                "Metadatenformat",
+                options=df['Metadatenformat'].dropna().unique(),
+                default=st.session_state.metadatenformat
+            )
         with col5:
-            st.session_state.aktualisierung = st.multiselect(
-                "Aktualisierung der Daten",
-                options=df['Aktualisierung der Daten '].dropna().unique(),
-                default=st.session_state.aktualisierung
-            )
-
-        # Zeile 2 (5 Spalten)
-        col6, col7, col8, col9, col10 = st.columns(5)
-        with col6:
-            st.session_state.datenformat = st.multiselect(
-                "Datenformat",
-                options=df['Datenformat'].dropna().unique(),
-                default=st.session_state.datenformat
-            )
-        with col7:
-            st.session_state.digitale_objekte = st.multiselect(
-                "Digitale Objekte",
-                options=df['Digitale Objekte '].dropna().unique(),
-                default=st.session_state.digitale_objekte
-            )
-        with col8:
-            st.session_state.online_frei = st.multiselect(
-                "Online frei verfügbar",
-                options=df['Online frei verfügbar'].dropna().unique(),
-                default=st.session_state.online_frei
-            )
-        with col9:
-            st.session_state.download_größe = st.multiselect(
-                "Download Größe (GB)",
-                options=df['Download Größe (GB)'].dropna().unique(),
-                default=st.session_state.download_größe
-            )
-        with col10:
-            st.session_state.schnittstelle = st.multiselect(
-                "Schnittstelle",
-                options=df['Schnittstelle'].dropna().unique(),
-                default=st.session_state.schnittstelle
+            st.session_state.bezugsweg = st.multiselect(
+                "Bezugsweg",
+                options=df['Bezugsweg'].dropna().unique(),
+                default=st.session_state.bezugsweg
             )
 
     # Apply-Button
@@ -146,23 +101,14 @@ def main():
         filter_conditions = {
             'Datensetname': st.session_state.datensetname,
             'Kategorie': st.session_state.kategorie,
-            'Art des Inhalts': st.session_state.art_des_inhalts,
-            'Zeitraum der Daten ': st.session_state.zeitraum,
-            'Aktualisierung der Daten ': st.session_state.aktualisierung,
-            'Datenformat': st.session_state.datenformat,
-            'Digitale Objekte ': st.session_state.digitale_objekte,
-            'Online frei verfügbar': st.session_state.online_frei,
-            'Download Größe (GB)': st.session_state.download_größe,
-            'Schnittstelle': st.session_state.schnittstelle
+            'Zeitraum der Daten': st.session_state.zeitraum,
+            'Metadatenformat': st.session_state.metadatenformat,
+            'Bezugsweg': st.session_state.bezugsweg
         }
-
-        # Kategorie-Filter anwenden (kombiniert)
-        if st.session_state.kategorie:
-            filtered_df = filtered_df[filtered_df[kategorie_spalten].isin(st.session_state.kategorie).any(axis=1)]
 
         # Andere Filter anwenden
         for column, values in filter_conditions.items():
-            if column not in ['Kategorie'] and values:  # Kategorie wurde bereits behandelt
+            if values:
                 filtered_df = filtered_df[filtered_df[column].isin(values)]
 
         # Datensetbeschreibung
