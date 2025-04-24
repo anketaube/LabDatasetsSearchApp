@@ -14,6 +14,7 @@ def load_data():
         excel_file = BytesIO(response.content)
         df = pd.read_excel(excel_file, engine='openpyxl', sheet_name='Tabelle2')
         df = df.replace('', pd.NA)
+        df.columns = df.columns.str.strip()  # Spaltennamen bereinigen
         return df
     except requests.exceptions.RequestException as e:
         st.error(f"Verbindungsfehler: {e}")
@@ -29,6 +30,14 @@ def download_csv(df):
     b.write(csv.encode('utf-8'))
     return b
 
+def extract_unique_multiselect_options(series):
+    """Extrahiert alle einzigartigen Werte aus einer kommagetrennten Series."""
+    unique_values = set()
+    for entry in series.dropna():
+        for value in str(entry).split(','):
+            unique_values.add(value.strip())
+    return sorted(unique_values)
+
 def main():
     st.set_page_config(layout="wide")
     st.title("📚 DNBLab Datensetsuche")
@@ -42,32 +51,42 @@ def main():
     else:
         df = st.session_state.original_df
 
+    # Spaltennamen dynamisch finden
+    col_names = {col.lower(): col for col in df.columns}
+    # Kategorie-Spalten dynamisch suchen
+    kategorie_spalten = [col for col in df.columns if col.lower().startswith('kategorie')]
+
+    # Eindeutige Werte für Kategorie
+    kategorie_werte = set()
+    for col in kategorie_spalten:
+        kategorie_werte.update(df[col].dropna().unique())
+    kategorie_werte = sorted([str(x) for x in kategorie_werte if str(x).strip() != ''])
+
+    # Für kommagetrennte Spalten
+    dateiformat_spalte = next((col for col in df.columns if 'dateiformat' in col.lower()), None)
+    volltext_spalte = next((col for col in df.columns if 'volltext' in col.lower()), None)
+
+    dateiformat_werte = extract_unique_multiselect_options(df[dateiformat_spalte]) if dateiformat_spalte else []
+    volltext_werte = extract_unique_multiselect_options(df[volltext_spalte]) if volltext_spalte else []
+
     # Session State für Filter initialisieren
     filter_keys = [
         'datensetname', 'kategorie', 'zeitraum',
-        'metadatenformat', 'bezugsweg'
+        'metadatenformat', 'bezugsweg', 'dateiformat', 'volltext'
     ]
     for key in filter_keys:
         if key not in st.session_state:
             st.session_state[key] = []
-
-    # Kategorie-Spalten identifizieren
-    kategorie_spalten = [col for col in df.columns if col.lower().startswith('kategorie')]
-
-    # Eindeutige Werte aus allen Kategorie-Spalten sammeln (Duplikate entfernen)
-    kategorie_werte = []
-    for col in kategorie_spalten:
-        kategorie_werte.extend(df[col].dropna().unique())
-    kategorie_werte = list(set(kategorie_werte))
 
     # Filterbereich
     st.header("Suchfilter")
     with st.container():
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
+            dsname_col = next((col for col in df.columns if 'datensetname' in col.lower()), None)
             st.session_state.datensetname = st.multiselect(
                 "Datensetname",
-                options=df['Datensetname'].dropna().unique(),
+                options=sorted(df[dsname_col].dropna().unique()) if dsname_col else [],
                 default=st.session_state.datensetname
             )
         with col2:
@@ -77,28 +96,47 @@ def main():
                 default=st.session_state.kategorie
             )
         with col3:
+            zeitraum_col = next((col for col in df.columns if 'zeitraum' in col.lower()), None)
             st.session_state.zeitraum = st.multiselect(
                 "Zeitraum der Daten",
-                options=df['Zeitraum der Daten'].dropna().unique(),
+                options=sorted(df[zeitraum_col].dropna().unique()) if zeitraum_col else [],
                 default=st.session_state.zeitraum
             )
         with col4:
+            meta_col = next((col for col in df.columns if 'metadatenformat' in col.lower()), None)
             st.session_state.metadatenformat = st.multiselect(
                 "Metadatenformat",
-                options=df['Metadatenformat'].dropna().unique(),
+                options=sorted(df[meta_col].dropna().unique()) if meta_col else [],
                 default=st.session_state.metadatenformat
             )
         with col5:
+            bezugsweg_col = next((col for col in df.columns if 'bezugsweg' in col.lower()), None)
             st.session_state.bezugsweg = st.multiselect(
                 "Bezugsweg",
-                options=df['Bezugsweg'].dropna().unique(),
+                options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [],
                 default=st.session_state.bezugsweg
             )
+
+    # Zweite Filterzeile für Dateiformat und Volltext-Verfügbarkeit
+    col6, col7 = st.columns(2)
+    with col6:
+        st.session_state.dateiformat = st.multiselect(
+            "Dateiformat",
+            options=dateiformat_werte,
+            default=st.session_state.dateiformat
+        )
+    with col7:
+        st.session_state.volltext = st.multiselect(
+            "Volltext-Verfügbarkeit",
+            options=volltext_werte,
+            default=st.session_state.volltext
+        )
 
     # Apply-Button
     apply_filter = st.button("Übernehmen")
 
     # Freitextsuche unterhalb des Buttons
+    beschreibung_col = next((col for col in df.columns if 'beschreibung' in col.lower()), None)
     beschreibung_suchbegriff = st.text_input("Suche in Datensetbeschreibung")
 
     # Filterung
@@ -109,19 +147,35 @@ def main():
             mask = filtered_df[kategorie_spalten].isin(st.session_state.kategorie).any(axis=1)
             filtered_df = filtered_df[mask]
 
-        # Weitere Filter
-        if st.session_state.datensetname:
-            filtered_df = filtered_df[filtered_df['Datensetname'].isin(st.session_state.datensetname)]
-        if st.session_state.zeitraum:
-            filtered_df = filtered_df[filtered_df['Zeitraum der Daten'].isin(st.session_state.zeitraum)]
-        if st.session_state.metadatenformat:
-            filtered_df = filtered_df[filtered_df['Metadatenformat'].isin(st.session_state.metadatenformat)]
-        if st.session_state.bezugsweg:
-            filtered_df = filtered_df[filtered_df['Bezugsweg'].isin(st.session_state.bezugsweg)]
+        # Datensetname
+        if st.session_state.datensetname and dsname_col:
+            filtered_df = filtered_df[filtered_df[dsname_col].isin(st.session_state.datensetname)]
+        # Zeitraum
+        if st.session_state.zeitraum and zeitraum_col:
+            filtered_df = filtered_df[filtered_df[zeitraum_col].isin(st.session_state.zeitraum)]
+        # Metadatenformat
+        if st.session_state.metadatenformat and meta_col:
+            filtered_df = filtered_df[filtered_df[meta_col].isin(st.session_state.metadatenformat)]
+        # Bezugsweg
+        if st.session_state.bezugsweg and bezugsweg_col:
+            filtered_df = filtered_df[filtered_df[bezugsweg_col].isin(st.session_state.bezugsweg)]
+
+        # Dateiformat (kommagetrennte Inhalte)
+        if st.session_state.dateiformat and dateiformat_spalte:
+            mask = filtered_df[dateiformat_spalte].dropna().apply(
+                lambda x: any(fmt.strip() in st.session_state.dateiformat for fmt in str(x).split(','))
+            )
+            filtered_df = filtered_df[mask]
+        # Volltext-Verfügbarkeit (kommagetrennte Inhalte)
+        if st.session_state.volltext and volltext_spalte:
+            mask = filtered_df[volltext_spalte].dropna().apply(
+                lambda x: any(vt.strip() in st.session_state.volltext for vt in str(x).split(','))
+            )
+            filtered_df = filtered_df[mask]
 
         # Freitextsuche in Beschreibung
-        if beschreibung_suchbegriff:
-            filtered_df = filtered_df[filtered_df['Beschreibung'].str.contains(
+        if beschreibung_suchbegriff and beschreibung_col:
+            filtered_df = filtered_df[filtered_df[beschreibung_col].str.contains(
                 beschreibung_suchbegriff, case=False, na=False
             )]
 
