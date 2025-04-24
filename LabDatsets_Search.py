@@ -51,10 +51,7 @@ def main():
         df = st.session_state.original_df
 
     # Spaltennamen dynamisch finden
-    col_names = {col.lower(): col for col in df.columns}
     kategorie_spalten = [col for col in df.columns if col.lower().startswith('kategorie')]
-
-    # Eindeutige Werte für Kategorie
     kategorie_werte = set()
     for col in kategorie_spalten:
         kategorie_werte.update(df[col].dropna().unique())
@@ -115,7 +112,7 @@ def main():
                 default=st.session_state.bezugsweg
             )
 
-    # Checkboxen für Dateiformat und Volltext-Verfügbarkeit
+    # Checkboxen für Dateiformat und Volltext-Verfügbarkeit (UND-Verknüpfung)
     st.markdown("#### Dateiformat")
     selected_dateiformate = []
     for val in dateiformat_werte:
@@ -158,16 +155,17 @@ def main():
         if st.session_state.bezugsweg and bezugsweg_col:
             filtered_df = filtered_df[filtered_df[bezugsweg_col].isin(st.session_state.bezugsweg)]
 
-        # Dateiformat (kommagetrennte Inhalte)
+        # Dateiformat (kommagetrennte Inhalte, UND-Verknüpfung)
         if st.session_state.dateiformat and dateiformat_spalte:
             mask = filtered_df[dateiformat_spalte].dropna().apply(
-                lambda x: any(fmt.strip() in st.session_state.dateiformat for fmt in str(x).split(','))
+                lambda x: all(fmt in [v.strip() for v in str(x).split(',')] for fmt in st.session_state.dateiformat)
             )
             filtered_df = filtered_df[mask]
-        # Volltext-Verfügbarkeit (kommagetrennte Inhalte)
+
+        # Volltext-Verfügbarkeit (kommagetrennte Inhalte, UND-Verknüpfung)
         if st.session_state.volltext and volltext_spalte:
             mask = filtered_df[volltext_spalte].dropna().apply(
-                lambda x: any(vt.strip() in st.session_state.volltext for vt in str(x).split(','))
+                lambda x: all(vt in [v.strip() for v in str(x).split(',')] for vt in st.session_state.volltext)
             )
             filtered_df = filtered_df[mask]
 
