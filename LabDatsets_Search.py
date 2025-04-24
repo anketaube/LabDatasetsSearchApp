@@ -71,10 +71,9 @@ def main():
         if key not in st.session_state:
             st.session_state[key] = []
 
-    # Filterbereich
+    # Harmonische Filter-Anordnung
     st.header("Suchfilter")
-    # Erste Zeile: Multiselects in einer Reihe
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         dsname_col = next((col for col in df.columns if 'datensetname' in col.lower()), None)
         st.session_state.datensetname = st.multiselect(
@@ -102,6 +101,8 @@ def main():
             options=sorted(df[meta_col].dropna().unique()) if meta_col else [],
             default=st.session_state.metadatenformat
         )
+
+    col5, col6, col7, col8 = st.columns(4)
     with col5:
         bezugsweg_col = next((col for col in df.columns if 'bezugsweg' in col.lower()), None)
         st.session_state.bezugsweg = st.multiselect(
@@ -109,10 +110,16 @@ def main():
             options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [],
             default=st.session_state.bezugsweg
         )
-
-    # Zweite Zeile: Dateiformat und Volltext-Verfügbarkeit nebeneinander
-    col6, col7 = st.columns(2)
     with col6:
+        st.write("")  # Platzhalter
+    with col7:
+        st.write("")  # Platzhalter
+    with col8:
+        st.write("")  # Platzhalter
+
+    # Dateiformat und Volltext-Verfügbarkeit nebeneinander als Checkbox-Gruppen
+    col9, col10 = st.columns(2)
+    with col9:
         st.markdown("**Dateiformat**")
         selected_dateiformate = []
         for val in dateiformat_werte:
@@ -120,7 +127,7 @@ def main():
                 selected_dateiformate.append(val)
         st.session_state.dateiformat = selected_dateiformate
 
-    with col7:
+    with col10:
         st.markdown("**Volltext-Verfügbarkeit**")
         selected_volltext = []
         for val in volltext_werte:
@@ -128,69 +135,4 @@ def main():
                 selected_volltext.append(val)
         st.session_state.volltext = selected_volltext
 
-    # Apply-Button
-    apply_filter = st.button("Übernehmen")
-
-    # Freitextsuche unterhalb des Buttons
-    beschreibung_col = next((col for col in df.columns if 'beschreibung' in col.lower()), None)
-    beschreibung_suchbegriff = st.text_input("Suche in Datensetbeschreibung")
-
-    # Filterung
-    filtered_df = df.copy()
-    if apply_filter or beschreibung_suchbegriff:
-        # Kategorie-Filter (über alle Kategorie-Spalten)
-        if st.session_state.kategorie:
-            mask = filtered_df[kategorie_spalten].isin(st.session_state.kategorie).any(axis=1)
-            filtered_df = filtered_df[mask]
-
-        # Datensetname
-        if st.session_state.datensetname and dsname_col:
-            filtered_df = filtered_df[filtered_df[dsname_col].isin(st.session_state.datensetname)]
-        # Zeitraum
-        if st.session_state.zeitraum and zeitraum_col:
-            filtered_df = filtered_df[filtered_df[zeitraum_col].isin(st.session_state.zeitraum)]
-        # Metadatenformat
-        if st.session_state.metadatenformat and meta_col:
-            filtered_df = filtered_df[filtered_df[meta_col].isin(st.session_state.metadatenformat)]
-        # Bezugsweg
-        if st.session_state.bezugsweg and bezugsweg_col:
-            filtered_df = filtered_df[filtered_df[bezugsweg_col].isin(st.session_state.bezugsweg)]
-
-        # Dateiformat (kommagetrennte Inhalte, UND-Verknüpfung)
-        if st.session_state.dateiformat and dateiformat_spalte:
-            def all_dateiformat_selected(cell):
-                cell_values = [v.strip() for v in str(cell).split(',')]
-                return all(fmt in cell_values for fmt in st.session_state.dateiformat)
-            mask = filtered_df[dateiformat_spalte].apply(all_dateiformat_selected)
-            filtered_df = filtered_df[mask]
-
-        # Volltext-Verfügbarkeit (kommagetrennte Inhalte, UND-Verknüpfung)
-        if st.session_state.volltext and volltext_spalte:
-            def all_volltext_selected(cell):
-                cell_values = [v.strip() for v in str(cell).split(',')]
-                return all(vt in cell_values for vt in st.session_state.volltext)
-            mask = filtered_df[volltext_spalte].apply(all_volltext_selected)
-            filtered_df = filtered_df[mask]
-
-        # Freitextsuche in Beschreibung
-        if beschreibung_suchbegriff and beschreibung_col:
-            filtered_df = filtered_df[filtered_df[beschreibung_col].str.contains(
-                beschreibung_suchbegriff, case=False, na=False
-            )]
-
-    # Ergebnisse anzeigen
-    st.header("Suchergebnisse")
-    st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
-    st.dataframe(filtered_df, use_container_width=True)
-
-    # Download-Button
-    csv_file = download_csv(filtered_df)
-    st.download_button(
-        label="Ergebnisse als CSV herunterladen",
-        data=csv_file,
-        file_name="dnb_datensets.csv",
-        mime="text/csv",
-    )
-
-if __name__ == "__main__":
-    main()
+    # Apply-Button und Freitextsuche in einer Zeile
