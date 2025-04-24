@@ -51,11 +51,18 @@ def main():
         if key not in st.session_state:
             st.session_state[key] = []
 
+    # Kategorie-Spalten identifizieren
+    kategorie_spalten = [col for col in df.columns if col.lower().startswith('kategorie')]
+
+    # Eindeutige Werte aus allen Kategorie-Spalten sammeln (Duplikate entfernen)
+    kategorie_werte = []
+    for col in kategorie_spalten:
+        kategorie_werte.extend(df[col].dropna().unique())
+    kategorie_werte = list(set(kategorie_werte))
+
     # Filterbereich
     st.header("Suchfilter")
-
     with st.container():
-        # Zeile 1 (5 Spalten)
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
             st.session_state.datensetname = st.multiselect(
@@ -66,7 +73,7 @@ def main():
         with col2:
             st.session_state.kategorie = st.multiselect(
                 "Kategorie",
-                options=df['Kategorie'].dropna().unique(),
+                options=kategorie_werte,
                 default=st.session_state.kategorie
             )
         with col3:
@@ -94,24 +101,25 @@ def main():
     # Freitextsuche unterhalb des Buttons
     beschreibung_suchbegriff = st.text_input("Suche in Datensetbeschreibung")
 
-    # Filterung nur bei Button-Klick oder Suchbegriff-Änderung
+    # Filterung
     filtered_df = df.copy()
-
     if apply_filter or beschreibung_suchbegriff:
-        filter_conditions = {
-            'Datensetname': st.session_state.datensetname,
-            'Kategorie': st.session_state.kategorie,
-            'Zeitraum der Daten': st.session_state.zeitraum,
-            'Metadatenformat': st.session_state.metadatenformat,
-            'Bezugsweg': st.session_state.bezugsweg
-        }
+        # Kategorie-Filter (über alle Kategorie-Spalten)
+        if st.session_state.kategorie:
+            mask = filtered_df[kategorie_spalten].isin(st.session_state.kategorie).any(axis=1)
+            filtered_df = filtered_df[mask]
 
-        # Andere Filter anwenden
-        for column, values in filter_conditions.items():
-            if values:
-                filtered_df = filtered_df[filtered_df[column].isin(values)]
+        # Weitere Filter
+        if st.session_state.datensetname:
+            filtered_df = filtered_df[filtered_df['Datensetname'].isin(st.session_state.datensetname)]
+        if st.session_state.zeitraum:
+            filtered_df = filtered_df[filtered_df['Zeitraum der Daten'].isin(st.session_state.zeitraum)]
+        if st.session_state.metadatenformat:
+            filtered_df = filtered_df[filtered_df['Metadatenformat'].isin(st.session_state.metadatenformat)]
+        if st.session_state.bezugsweg:
+            filtered_df = filtered_df[filtered_df['Bezugsweg'].isin(st.session_state.bezugsweg)]
 
-        # Datensetbeschreibung
+        # Freitextsuche in Beschreibung
         if beschreibung_suchbegriff:
             filtered_df = filtered_df[filtered_df['Beschreibung'].str.contains(
                 beschreibung_suchbegriff, case=False, na=False
