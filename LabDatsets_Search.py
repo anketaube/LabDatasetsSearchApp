@@ -14,7 +14,7 @@ def load_data():
         excel_file = BytesIO(response.content)
         df = pd.read_excel(excel_file, engine='openpyxl', sheet_name='Tabelle2')
         df = df.replace('', pd.NA)
-        df.columns = df.columns.str.strip()  # Spaltennamen bereinigen
+        df.columns = df.columns.str.strip()
         return df
     except requests.exceptions.RequestException as e:
         st.error(f"Verbindungsfehler: {e}")
@@ -31,7 +31,6 @@ def download_csv(df):
     return b
 
 def extract_unique_multiselect_options(series):
-    """Extrahiert alle einzigartigen Werte aus einer kommagetrennten Series."""
     unique_values = set()
     for entry in series.dropna():
         for value in str(entry).split(','):
@@ -53,7 +52,6 @@ def main():
 
     # Spaltennamen dynamisch finden
     col_names = {col.lower(): col for col in df.columns}
-    # Kategorie-Spalten dynamisch suchen
     kategorie_spalten = [col for col in df.columns if col.lower().startswith('kategorie')]
 
     # Eindeutige Werte für Kategorie
@@ -62,7 +60,7 @@ def main():
         kategorie_werte.update(df[col].dropna().unique())
     kategorie_werte = sorted([str(x) for x in kategorie_werte if str(x).strip() != ''])
 
-    # Für kommagetrennte Spalten
+    # Kommagetrennte Spalten
     dateiformat_spalte = next((col for col in df.columns if 'dateiformat' in col.lower()), None)
     volltext_spalte = next((col for col in df.columns if 'volltext' in col.lower()), None)
 
@@ -117,20 +115,20 @@ def main():
                 default=st.session_state.bezugsweg
             )
 
-    # Zweite Filterzeile für Dateiformat und Volltext-Verfügbarkeit
-    col6, col7 = st.columns(2)
-    with col6:
-        st.session_state.dateiformat = st.multiselect(
-            "Dateiformat",
-            options=dateiformat_werte,
-            default=st.session_state.dateiformat
-        )
-    with col7:
-        st.session_state.volltext = st.multiselect(
-            "Volltext-Verfügbarkeit",
-            options=volltext_werte,
-            default=st.session_state.volltext
-        )
+    # Checkboxen für Dateiformat und Volltext-Verfügbarkeit
+    st.markdown("#### Dateiformat")
+    selected_dateiformate = []
+    for val in dateiformat_werte:
+        if st.checkbox(val, key="dateiformat_" + val, value=(val in st.session_state.dateiformat)):
+            selected_dateiformate.append(val)
+    st.session_state.dateiformat = selected_dateiformate
+
+    st.markdown("#### Volltext-Verfügbarkeit")
+    selected_volltext = []
+    for val in volltext_werte:
+        if st.checkbox(val, key="volltext_" + val, value=(val in st.session_state.volltext)):
+            selected_volltext.append(val)
+    st.session_state.volltext = selected_volltext
 
     # Apply-Button
     apply_filter = st.button("Übernehmen")
