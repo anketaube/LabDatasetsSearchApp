@@ -57,24 +57,20 @@ def main():
         kategorie_werte.update(df[col].dropna().unique())
     kategorie_werte = sorted([str(x) for x in kategorie_werte if str(x).strip() != ''])
 
-    #dateiformat_spalte = next((col for col in df.columns if 'dateiformat' in col.lower()), None)
     volltext_spalte = next((col for col in df.columns if 'volltext' in col.lower()), None)
-    #dateiformat_werte = extract_unique_multiselect_options(df[dateiformat_spalte]) if dateiformat_spalte else []
     volltext_werte = extract_unique_multiselect_options(df[volltext_spalte]) if volltext_spalte else []
 
     # Session State für Filter initialisieren
     filter_keys = [
-        'kategorie', 'zeitraum',
-        'metadatenformat', 'bezugsweg', 'volltext'
+        'kategorie', 'zeitraum', 'metadatenformat', 'bezugsweg', 'volltext'
     ]
     for key in filter_keys:
         if key not in st.session_state:
             st.session_state[key] = []
 
-    # Harmonische Filter-Anordnung
+    # Filterzeile 1
     st.header("Suchfilter")
     col1, col2, col3, col4 = st.columns(4)
-
     with col1:
         st.session_state.kategorie = st.multiselect(
             "Kategorie",
@@ -88,7 +84,6 @@ def main():
             options=sorted(df[zeitraum_col].dropna().unique()) if zeitraum_col else [],
             default=st.session_state.zeitraum
         )
-
     with col3:
         meta_col = next((col for col in df.columns if 'metadatenformat' in col.lower()), None)
         st.session_state.metadatenformat = st.multiselect(
@@ -96,7 +91,6 @@ def main():
             options=sorted(df[meta_col].dropna().unique()) if meta_col else [],
             default=st.session_state.metadatenformat
         )
-
     with col4:
         bezugsweg_col = next((col for col in df.columns if 'bezugsweg' in col.lower()), None)
         st.session_state.bezugsweg = st.multiselect(
@@ -105,33 +99,22 @@ def main():
             default=st.session_state.bezugsweg
         )
 
-    #Apply-Button und Freitextsuche in einer Zeile
-    col5, col6, col7 = st.columns([4, 2, 1])
-
+    # Filterzeile 2: Volltext-Verfügbarkeit, Suchfeld, Button
+    col5, col6, col7 = st.columns([2, 6, 1])
     with col5:
-        beschreibung_col = next((col for col in df.columns if 'beschreibung' in col.lower()), None)
-        beschreibung_suchbegriff = st.text_input("Suche in Datensetbeschreibung (Case-sensitive)")
-
-    with col6:
         st.markdown("**Volltext-Verfügbarkeit**")
         selected_volltext = []
         for val in volltext_werte:
             if st.checkbox(val, key="volltext_" + val, value=(val in st.session_state.volltext)):
                 selected_volltext.append(val)
         st.session_state.volltext = selected_volltext
-    with col7:
-       apply_filter = st.button("Finden")
 
-        # Code, um den Button "dicker" zu machen (optional)
-       st.markdown("""
-            <style>
-            div.stButton > button:first-child {
-            background-color: #008CBA;
-            color: white;
-            font-weight: bold;
-            }
-            </style>
-            """, unsafe_allow_html=True)
+    with col6:
+        suchfeld = st.text_input("Suche in allen Feldern", key="suchfeld")
+
+    with col7:
+        # Lupensymbol als Button
+        suchen = st.button("🔍", key="finden_button")
 
     # Filterung
     filtered_df = df.copy()
@@ -143,45 +126,4 @@ def main():
 
     # Zeitraum
     if st.session_state.zeitraum and zeitraum_col:
-        filtered_df = filtered_df[filtered_df[zeitraum_col].isin(st.session_state.zeitraum)]
-
-    # Metadatenformat
-    if st.session_state.metadatenformat and meta_col:
-        filtered_df = filtered_df[filtered_df[meta_col].isin(st.session_state.metadatenformat)]
-
-    # Bezugsweg
-    if st.session_state.bezugsweg and bezugsweg_col:
-        filtered_df = filtered_df[filtered_df[bezugsweg_col].isin(st.session_state.bezugsweg)]
-
-    # Volltext-Verfügbarkeit (kommagetrennte Inhalte, UND-Verknüpfung)
-    if st.session_state.volltext and volltext_spalte:
-        def all_volltext_selected(cell):
-            cell_values = [v.strip() for v in str(cell).split(',')]
-            return all(vt in cell_values for vt in st.session_state.volltext)
-        mask = filtered_df[volltext_spalte].apply(all_volltext_selected)
-        filtered_df = filtered_df[mask]
-
-    # Freitextsuche in Beschreibung
-    if apply_filter or beschreibung_suchbegriff:
-        if beschreibung_suchbegriff and beschreibung_col:
-            suchwoerter = [w.strip() for w in beschreibung_suchbegriff.split() if w.strip()]
-            for wort in suchwoerter:
-                mask = filtered_df.apply(lambda row: row.astype(str).str.contains(wort, case=True, na=False).any(), axis=1)
-                filtered_df = filtered_df[mask]
-
-    # Ergebnisse anzeigen
-    st.header("Suchergebnisse")
-    st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
-    st.dataframe(filtered_df, use_container_width=True, height=400)
-
-    # Download-Button
-    csv_file = download_csv(filtered_df)
-    st.download_button(
-        label="Ergebnisse als CSV herunterladen",
-        data=csv_file,
-        file_name="dnb_datensets.csv",
-        mime="text/csv",
-    )
-
-if __name__ == "__main__":
-    main()
+        filtered_df =
