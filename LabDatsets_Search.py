@@ -114,6 +114,16 @@ def main():
 
     with col7:
         # Lupensymbol als Button
+        st.markdown(
+            """
+            <style>
+            [data-testid="stHorizontalBlock"] > div:nth-child(3) > div > button {
+                vertical-align: middle;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
         suchen = st.button("🔍", key="finden_button")
 
     # Filterung
