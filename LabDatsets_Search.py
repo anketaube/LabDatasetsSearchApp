@@ -57,15 +57,15 @@ def main():
         kategorie_werte.update(df[col].dropna().unique())
     kategorie_werte = sorted([str(x) for x in kategorie_werte if str(x).strip() != ''])
 
-    dateiformat_spalte = next((col for col in df.columns if 'dateiformat' in col.lower()), None)
+    #dateiformat_spalte = next((col for col in df.columns if 'dateiformat' in col.lower()), None)
     volltext_spalte = next((col for col in df.columns if 'volltext' in col.lower()), None)
-    dateiformat_werte = extract_unique_multiselect_options(df[dateiformat_spalte]) if dateiformat_spalte else []
+    #dateiformat_werte = extract_unique_multiselect_options(df[dateiformat_spalte]) if dateiformat_spalte else []
     volltext_werte = extract_unique_multiselect_options(df[volltext_spalte]) if volltext_spalte else []
 
     # Session State für Filter initialisieren
     filter_keys = [
         'kategorie', 'zeitraum',
-        'metadatenformat', 'bezugsweg', 'dateiformat', 'volltext'
+        'metadatenformat', 'bezugsweg', 'volltext'
     ]
     for key in filter_keys:
         if key not in st.session_state:
@@ -105,17 +105,14 @@ def main():
             default=st.session_state.bezugsweg
         )
 
-    col5, col6 = st.columns(2)
+    #Apply-Button und Freitextsuche in einer Zeile
+    col9, col10, col11 = st.columns([4, 2, 1])
 
-    with col5:
-        st.markdown("**Dateiformat**")
-        selected_dateiformate = []
-        for val in dateiformat_werte:
-            if st.checkbox(val, key="dateiformat_" + val, value=(val in st.session_state.dateiformat)):
-                selected_dateiformate.append(val)
-        st.session_state.dateiformat = selected_dateiformate
+    with col9:
+        beschreibung_col = next((col for col in df.columns if 'beschreibung' in col.lower()), None)
+        beschreibung_suchbegriff = st.text_input("Suche in Datensetbeschreibung (Case-sensitive)")
 
-    with col6:
+    with col10:
         st.markdown("**Volltext-Verfügbarkeit**")
         selected_volltext = []
         for val in volltext_werte:
@@ -123,17 +120,7 @@ def main():
                 selected_volltext.append(val)
         st.session_state.volltext = selected_volltext
 
-    # Apply-Button und Freitextsuche in einer Zeile
-    col7, col8, col9 = st.columns([4, 2, 1])
-
-    with col7:
-        beschreibung_col = next((col for col in df.columns if 'beschreibung' in col.lower()), None)
-        beschreibung_suchbegriff = st.text_input("Suche in Datensetbeschreibung (Case-sensitive)")
-
-    with col8:
-        pass  # Platzhalter, um den Button nach rechts zu schieben
-
-    with col9:
+    with col11:
         apply_filter = st.button("Finden")
 
     # Filterung
@@ -162,14 +149,6 @@ def main():
             cell_values = [v.strip() for v in str(cell).split(',')]
             return all(vt in cell_values for vt in st.session_state.volltext)
         mask = filtered_df[volltext_spalte].apply(all_volltext_selected)
-        filtered_df = filtered_df[mask]
-
-    # Dateiformat (ODER-Verknüpfung)
-    if st.session_state.dateiformat and dateiformat_spalte:
-        def any_dateiformat_selected(cell):
-            cell_values = [v.strip() for v in str(cell).split(',')]
-            return any(fmt in cell_values for fmt in st.session_state.dateiformat)
-        mask = filtered_df[dateiformat_spalte].apply(any_dateiformat_selected)
         filtered_df = filtered_df[mask]
 
     # Freitextsuche in Beschreibung
