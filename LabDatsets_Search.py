@@ -8,7 +8,7 @@ GITHUB_EXCEL_URL = "https://raw.githubusercontent.com/anketaube/LabDatasetsSearc
 
 def load_data():
     try:
-        st.info(f"Lade Daten von: `{GITHUB_EXCEL_URL}`")
+        #st.info(f"Lade Daten von: `{GITHUB_EXCEL_URL}`") # entfernt
         response = requests.get(GITHUB_EXCEL_URL)
         response.raise_for_status()
         excel_file = BytesIO(response.content)
@@ -119,6 +119,9 @@ def main():
             <style>
             [data-testid="stHorizontalBlock"] > div:nth-child(3) > div > button {
                 vertical-align: middle;
+                font-size: 24px; /* Anpassen der Größe */
+                height: 50px;  /* Anpassen der Höhe */
+                line-height: 40px; /* Anpassen der Zeilenhöhe */
             }
             </style>
             """,
