@@ -126,4 +126,44 @@ def main():
 
     # Zeitraum
     if st.session_state.zeitraum and zeitraum_col:
-        filtered_df =
+        filtered_df = filtered_df[filtered_df[zeitraum_col].isin(st.session_state.zeitraum)]
+
+    # Metadatenformat
+    if st.session_state.metadatenformat and meta_col:
+        filtered_df = filtered_df[filtered_df[meta_col].isin(st.session_state.metadatenformat)]
+
+    # Bezugsweg
+    if st.session_state.bezugsweg and bezugsweg_col:
+        filtered_df = filtered_df[filtered_df[bezugsweg_col].isin(st.session_state.bezugsweg)]
+
+    # Volltext-Verfügbarkeit (kommagetrennte Inhalte, UND-Verknüpfung)
+    if st.session_state.volltext and volltext_spalte:
+        def all_volltext_selected(cell):
+            cell_values = [v.strip() for v in str(cell).split(',')]
+            return all(vt in cell_values for vt in st.session_state.volltext)
+        mask = filtered_df[volltext_spalte].apply(all_volltext_selected)
+        filtered_df = filtered_df[mask]
+
+    # Freitextsuche in allen Feldern (UND-Verknüpfung, Case-sensitive) nur wenn Button gedrückt
+    if suchen and suchfeld:
+        suchwoerter = [w.strip() for w in suchfeld.split() if w.strip()]
+        for wort in suchwoerter:
+            mask = filtered_df.apply(lambda row: row.astype(str).str.contains(wort, case=True, na=False).any(), axis=1)
+            filtered_df = filtered_df[mask]
+
+    # Ergebnisse anzeigen
+    st.header("Suchergebnisse")
+    st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
+    st.dataframe(filtered_df, use_container_width=True, height=400)
+
+    # Download-Button
+    csv_file = download_csv(filtered_df)
+    st.download_button(
+        label="Ergebnisse als CSV herunterladen",
+        data=csv_file,
+        file_name="dnb_datensets.csv",
+        mime="text/csv",
+    )
+
+if __name__ == "__main__":
+    main()
