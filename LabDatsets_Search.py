@@ -106,22 +106,32 @@ def main():
         )
 
     #Apply-Button und Freitextsuche in einer Zeile
-    col9, col10, col11 = st.columns([4, 2, 1])
+    col5, col6, col7 = st.columns([4, 2, 1])
 
-    with col9:
+    with col5:
         beschreibung_col = next((col for col in df.columns if 'beschreibung' in col.lower()), None)
         beschreibung_suchbegriff = st.text_input("Suche in Datensetbeschreibung (Case-sensitive)")
 
-    with col10:
+    with col6:
         st.markdown("**Volltext-Verfügbarkeit**")
         selected_volltext = []
         for val in volltext_werte:
             if st.checkbox(val, key="volltext_" + val, value=(val in st.session_state.volltext)):
                 selected_volltext.append(val)
         st.session_state.volltext = selected_volltext
+    with col7:
+       apply_filter = st.button("Finden")
 
-    with col11:
-        apply_filter = st.button("Finden")
+        # Code, um den Button "dicker" zu machen (optional)
+       st.markdown("""
+            <style>
+            div.stButton > button:first-child {
+            background-color: #008CBA;
+            color: white;
+            font-weight: bold;
+            }
+            </style>
+            """, unsafe_allow_html=True)
 
     # Filterung
     filtered_df = df.copy()
