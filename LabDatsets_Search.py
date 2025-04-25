@@ -60,7 +60,7 @@ def main():
     volltext_spalte = next((col for col in df.columns if 'volltext' in col.lower()), None)
     volltext_werte = extract_unique_multiselect_options(df[volltext_spalte]) if volltext_spalte else []
 
-    # Session State für Filter initialisieren
+    # Session State für Filter initialisieren (ohne Datensetname und Dateiformat)
     filter_keys = [
         'kategorie', 'zeitraum', 'metadatenformat', 'bezugsweg', 'volltext'
     ]
