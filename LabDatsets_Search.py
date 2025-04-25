@@ -103,7 +103,7 @@ def main():
             default=st.session_state.bezugsweg
         )
 
-    # Volltext-Verfügbarkeit als Checkbox-Gruppe
+    # Volltext-Verfügbarkeit und Suchfeld nebeneinander
     col5, col6 = st.columns(2)
     with col5:
         st.markdown("**Volltext-Verfügbarkeit**")
@@ -113,12 +113,11 @@ def main():
                 selected_volltext.append(val)
         st.session_state.volltext = selected_volltext
 
-    # Apply-Button und Freitextsuche in einer Zeile
-    col7, col8 = st.columns([1, 3])
-    with col7:
-        apply_filter = st.button("Übernehmen")
-    with col8:
-        suchbegriff = st.text_input("Suche in allen Feldern")
+    with col6:
+        suchbegriff = st.text_input("Suche in allen Feldern (Case-sensitive)")
+
+    # Apply-Button unterhalb der Checkboxen und des Suchfelds
+    apply_filter = st.button("Übernehmen")
 
     # Filterung
     filtered_df = df.copy()
@@ -126,7 +125,8 @@ def main():
     if apply_filter or suchbegriff:
         # Kategorie-Filter (über alle Kategorie-Spalten)
         if st.session_state.kategorie:
-            mask = filtered_df[kategorie_spalten].isin(st.session_state.kategorie).any(axis=1)
+            #Anpassung für "Enthält"-Suche
+            mask = filtered_df[kategorie_spalten].apply(lambda x: x.astype(str).str.contains('|'.join(st.session_state.kategorie), case=False, na=False).any(), axis=1)
             filtered_df = filtered_df[mask]
 
         # Zeitraum
@@ -149,11 +149,11 @@ def main():
             mask = filtered_df[volltext_spalte].apply(all_volltext_selected)
             filtered_df = filtered_df[mask]
 
-        # Freitextsuche in allen Feldern (UND-Verknüpfung bei mehreren Suchwörtern)
+        # Freitextsuche in allen Feldern (UND-Verknüpfung bei mehreren Suchwörtern, Case-sensitive)
         if suchbegriff:
             suchwoerter = [w.strip() for w in suchbegriff.split() if w.strip()]
             for wort in suchwoerter:
-                mask = filtered_df.apply(lambda row: row.astype(str).str.contains(wort, case=False, na=False).any(), axis=1)
+                mask = filtered_df.apply(lambda row: row.astype(str).str.contains(wort, case=True, na=False).any(), axis=1)
                 filtered_df = filtered_df[mask]
 
     # Ergebnisse anzeigen
