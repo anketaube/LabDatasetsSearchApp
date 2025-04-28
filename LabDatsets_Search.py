@@ -99,10 +99,21 @@ def main():
             default=st.session_state.bezugsweg
         )
 
-    # Filterzeile 2: Volltext-Verfügbarkeit, Suchfeld, Button
+    # Filterzeile 2: Volltext-Verfügbarkeit mit Info-Icon, Suchfeld, Button
     col5, col6, col7 = st.columns([2, 6, 1])
     with col5:
-        st.markdown("**Volltext-Verfügbarkeit**")
+        st.markdown(
+            """
+            <span style="font-weight: bold;">
+                Volltext-Verfügbarkeit
+                <a href="https://www.dnb.de/dhdoa" target="_blank" 
+                   style="text-decoration: none; margin-left: 6px; color: #0d6efd;">
+                    ℹ️
+                </a>
+            </span>
+            """,
+            unsafe_allow_html=True,
+        )
         selected_volltext = []
         for val in volltext_werte:
             if st.checkbox(val, key="volltext_" + val, value=(val in st.session_state.volltext)):
