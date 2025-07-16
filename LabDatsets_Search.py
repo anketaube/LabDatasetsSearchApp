@@ -1,157 +1,182 @@
 import streamlit as st
 import pandas as pd
-import os
+import requests
+from io import BytesIO
 import io
 
-st.set_page_config(page_title='Klick-Test neuer DNB Katalog')
+GITHUB_EXCEL_URL = "https://raw.githubusercontent.com/anketaube/LabDatasetsSearchApp/main/Datensets_Filter.xlsx"
 
-st.markdown("# Klick-Test neuer DNB Katalog")
+def load_data():
+    try:
+        response = requests.get(GITHUB_EXCEL_URL)
+        response.raise_for_status()
+        excel_file = BytesIO(response.content)
+        df = pd.read_excel(excel_file, engine='openpyxl', sheet_name='Tabelle2')
+        df = df.replace('', pd.NA)
+        df.columns = df.columns.str.strip()
+        return df
+    except requests.exceptions.RequestException as e:
+        st.error(f"Verbindungsfehler: {e}")
+        return None
+    except Exception as e:
+        st.error(f"Fehler beim Laden der Excel-Datei: {e}")
+        st.info("Stellen Sie sicher, dass die Datei eine gültige Excel-Datei ist und das Format .xlsx hat.")
+        return None
 
-# Alter
-st.subheader("Wie alt bist Du?")
-alter = st.number_input("Wie alt bist Du?", min_value=0, max_value=120, key="alter")
+def download_csv(df):
+    csv = df.to_csv(index=False, encoding='utf-8')
+    b = io.BytesIO()
+    b.write(csv.encode('utf-8'))
+    return b
 
-# Kenntnis DNB
-st.subheader("Kennst Du die Deutsche Nationalbibliothek (DNB)?")
-dnb_kenntnis = st.slider("Antwort 0 bis 5 (0 = gar nicht, 5 = sehr gut)", 0, 5, 3, key="dnb_kenntnis")
+def extract_unique_multiselect_options(series):
+    unique_values = set()
+    for entry in series.dropna():
+        for value in str(entry).split(','):
+            unique_values.add(value.strip())
+    return sorted(unique_values)
 
-# Nutzung Katalog
-st.subheader("Hast Du schon mal im Katalog der DNB auf [portal.dnb.de](https://portal.dnb.de) recherchiert?")
-dnb_katalog_nutzung = st.slider("Antwort 0 bis 5 (0 = nie, 5 = sehr oft)", 0, 5, 0, key="dnb_katalog_nutzung")
+def main():
+    st.set_page_config(layout="wide")
+    st.title("📚 DNBLab Datensetsuche")
 
-# Mit welchem Gerät testest Du?
-st.subheader("Mit welchem Gerät testest Du?")
-geraet = st.radio(
-    "Bitte wähle Dein Testgerät aus:",
-    ("Desktop", "Laptop", "Tablet", "Smartphone"),
-    key="geraet"
-)
-
-# Test wiederholt?
-st.subheader("Führst Du den Test wiederholt mit einem anderen Gerät durch?")
-wiederholung = st.radio(
-    "",  # Kein zusätzliches Label
-    ("Ja", "Nein"),
-    key="wiederholung",
-    index=1   # Standardmäßig "Nein" (=Index 1)
-)
-
-# Testbeschreibung
-st.title("Testbeschreibung")
-st.write("""
-Im Folgenden möchten wir wissen, wie Du den neuen Katalog der DNB wahrnimmst und welche Erfahrungen Du bei bestimmten Aufgaben machst. Bitte beschreibe Deine Klickwege, Gedanken und gib uns Feedback zu den einzelnen Schritten.
-Starte den Test mit dieser Beispielseite eines Datensatzes im neuen Katalog (das Hinweisfenster bitte über das X einfach schließen):
-[https://preview-dnbportal.dnb.de.test/static/katalogsuche-detailansicht-erste-seite.html](https://preview-dnbportal.dnb.de.test/static/katalogsuche-detailansicht-erste-seite.html)
-Deine Antworten helfen uns, die Benutzungsführung zu verbessern. Vielen Dank für Deine Unterstützung!
-""")
-
-# 1. Testaufgabe: Online-Ausgabe aufrufen
-st.subheader("1. Testaufgabe: Du bist zuhause und möchtest die Online-Ausgabe aufrufen.")
-st.write("Wie gehst Du vor?")
-klickpfad_digital_a = st.text_area("a) Beschreibe Deinen genauen Weg zum Ziel:", key="klickpfad_digital_a")
-gedanken_digital_b = st.text_area("b) Beschreibe Deine Gedanken bei Deinem Vorgehen:", key="gedanken_digital_b")
-zufriedenheit_digital_c = st.radio("c) Bist Du zufrieden mit der Benutzungsführung?", ("Ja", "Nein", "Teils"), key="zufriedenheit_digital_c")
-aenderung_digital_d = st.text_area("d) Was würdest Du anders machen/erwarten?", key="aenderung_digital_d")
-
-# 2. Testaufgabe: Medium als Buch einsehen
-st.subheader("2. Testaufgabe: Du wohnst in Berlin und möchtest das gleiche Medium nun als Buch einsehen.")
-st.write("Wie gehst Du vor?")
-klickpfad_physisch_a = st.text_area("a) Beschreibe Deinen genauen Weg zum Ziel:", key="klickpfad_physisch_a")
-gedanken_physisch_b = st.text_area("b) Beschreibe Deine Gedanken bei Deinem Vorgehen:", key="gedanken_physisch_b")
-zufriedenheit_physisch_c = st.radio("c) Bist Du zufrieden mit der Benutzungsführung?", ("Ja", "Nein", "Teils"), key="zufriedenheit_physisch_c")
-aenderung_physisch_d = st.text_area("d) Was würdest Du anders machen/erwarten?", key="aenderung_physisch_d")
-
-# 3. Testaufgabe: Buch in Frankfurt einsehen
-st.subheader("3. Testaufgabe: Kannst Du das Buch in Frankfurt einsehen?")
-st.write("Wie gehst Du vor?")
-klickpfad_frankfurt_a = st.text_area("a) Beschreibe Deinen genauen Weg zum Ziel:", key="klickpfad_frankfurt_a")
-gedanken_frankfurt_b = st.text_area("b) Beschreibe Deine Gedanken bei Deinem Vorgehen:", key="gedanken_frankfurt_b")
-zufriedenheit_frankfurt_c = st.radio("c) Bist Du zufrieden mit der Benutzungsführung?", ("Ja", "Nein", "Teils"), key="zufriedenheit_frankfurt_c")
-aenderung_frankfurt_d = st.text_area("d) Was würdest Du anders machen/erwarten?", key="aenderung_frankfurt_d")
-
-if st.button("Absenden"):
-    data = {
-        "Alter": alter,
-        "DNB Kenntnis": dnb_kenntnis,
-        "DNB Katalog Nutzung": dnb_katalog_nutzung,
-        "Testgerät": geraet,
-        "Mehrfachtest": wiederholung,  # <- neue Spalte
-        # Digital
-        "Klickpfad Digital": klickpfad_digital_a,
-        "Gedanken Digital": gedanken_digital_b,
-        "Zufriedenheit Digital": zufriedenheit_digital_c,
-        "Aenderung Digital": aenderung_digital_d,
-        # Physisch
-        "Klickpfad Physisch": klickpfad_physisch_a,
-        "Gedanken Physisch": gedanken_physisch_b,
-        "Zufriedenheit Physisch": zufriedenheit_physisch_c,
-        "Aenderung Physisch": aenderung_physisch_d,
-        # Frankfurt
-        "Klickpfad Frankfurt": klickpfad_frankfurt_a,
-        "Gedanken Frankfurt": gedanken_frankfurt_b,
-        "Zufriedenheit Frankfurt": zufriedenheit_frankfurt_c,
-        "Aenderung Frankfurt": aenderung_frankfurt_d,
-    }
-    df = pd.DataFrame([data])
-    if os.path.exists("dnb_umfrage.csv"):
-        existing_data = pd.read_csv("dnb_umfrage.csv")
-        df = pd.concat([existing_data, df], ignore_index=True)
-    df.to_csv("dnb_umfrage.csv", index=False, encoding="utf-8")
-    st.success("Daten erfolgreich gespeichert!")
-
-def group_percent(df, group_col, value_col):
-    """Gibt eine Kreuztabelle mit Prozentverteilung der Zufriedenheit je Gruppierung zurück"""
-    ctab = pd.crosstab(df[group_col], df[value_col], normalize='index') * 100
-    ctab = ctab.round(1).astype(str) + '%'
-    return ctab
-
-with st.expander("Admin: Daten löschen und Download"):
-    delete_password = st.text_input("Passwort:", type="password")
-    if delete_password == "dnb":
-        if os.path.exists("dnb_umfrage.csv"):
-            df = pd.read_csv("dnb_umfrage.csv")
-            # Altersgruppen bilden
-            bins = [0, 19, 29, 39, 49, 59, 69, 120]
-            labels = ['<20', '20-29', '30-39', '40-49', '50-59', '60-69', '70+']
-            df['Altersgruppe'] = pd.cut(df['Alter'], bins=bins, labels=labels, right=True, include_lowest=True)
-            # Zufriedenheiten
-            zuf_cols = [
-                ("Zufriedenheit Digital", "Aufgabe 1"),
-                ("Zufriedenheit Physisch", "Aufgabe 2"),
-                ("Zufriedenheit Frankfurt", "Aufgabe 3"),
-            ]
-            # Auswertungen
-            auswertungen = [
-                ("Zufriedenheit nach Altersgruppe", 'Altersgruppe'),
-                ("Zufriedenheit nach Testgerät", 'Testgerät'),
-                ("Zufriedenheit nach DNB Kenntnis", 'DNB Kenntnis'),
-                ("Zufriedenheit nach Katalog Nutzung", 'DNB Katalog Nutzung'),
-            ]
-            excel_buffer = io.BytesIO()
-            with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
-                # Rohdaten
-                df.to_excel(writer, index=False, sheet_name="Antworten")
-                # Für jede Auswertung und Aufgabe ein Tab
-                for auswertung_name, group_col in auswertungen:
-                    for zuf_col, aufgabe in zuf_cols:
-                        tab_name = f"{aufgabe} ({auswertung_name.split()[-1]})"
-                        ctab = group_percent(df, group_col, zuf_col)
-                        sheet_name = tab_name[:31]
-                        ctab.to_excel(writer, sheet_name=sheet_name)
-            excel_buffer.seek(0)
-            st.download_button(
-                label="Excel-Tabelle herunterladen",
-                data=excel_buffer,
-                file_name="dnb_umfrage_auswertung.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-            if st.button("Daten wirklich löschen"):
-                try:
-                    os.remove("dnb_umfrage.csv")
-                    st.success("Daten erfolgreich gelöscht!")
-                except FileNotFoundError:
-                    st.warning("Keine Daten zum Löschen gefunden.")
-        else:
-            st.info("Noch keine Daten zum Download vorhanden.")
+    # Daten laden
+    if 'original_df' not in st.session_state:
+        df = load_data()
+        if df is None:
+            st.stop()
+        st.session_state.original_df = df
     else:
-        st.warning("Bitte gültiges Passwort eingeben, um Daten einzusehen oder zu löschen.")
+        df = st.session_state.original_df
+
+    # Spaltennamen dynamisch finden
+    kategorie_spalten = [col for col in df.columns if col.lower().startswith('kategorie')]
+    kategorie_werte = set()
+    for col in kategorie_spalten:
+        kategorie_werte.update(df[col].dropna().unique())
+    kategorie_werte = sorted([str(x) for x in kategorie_werte if str(x).strip() != ''])
+
+    volltext_spalte = next((col for col in df.columns if 'volltext' in col.lower()), None)
+    dateiformat_spalte = next((col for col in df.columns if 'dateiformat' in col.lower()), None)
+
+    volltext_werte = extract_unique_multiselect_options(df[volltext_spalte]) if volltext_spalte else []
+    dateiformat_werte = extract_unique_multiselect_options(df[dateiformat_spalte]) if dateiformat_spalte else []
+
+    # Session State für Filter initialisieren
+    filter_keys = [
+        'kategorie', 'zeitraum', 'metadatenformat', 'bezugsweg', 'volltext', 'dateiformat'
+    ]
+    for key in filter_keys:
+        if key not in st.session_state:
+            st.session_state[key] = []
+
+    # Filterzeile 1
+    st.header("Suchfilter")
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.session_state.kategorie = st.multiselect(
+            "Kategorie",
+            options=kategorie_werte,
+            default=st.session_state.kategorie
+        )
+
+    with col2:
+        zeitraum_col = next((col for col in df.columns if 'zeitraum' in col.lower()), None)
+        st.session_state.zeitraum = st.multiselect(
+            "Zeitraum der Daten",
+            options=sorted(df[zeitraum_col].dropna().unique()) if zeitraum_col else [],
+            default=st.session_state.zeitraum
+        )
+
+    with col3:
+        meta_col = next((col for col in df.columns if 'metadatenformat' in col.lower()), None)
+        st.session_state.metadatenformat = st.multiselect(
+            "Metadatenformat",
+            options=sorted(df[meta_col].dropna().unique()) if meta_col else [],
+            default=st.session_state.metadatenformat
+        )
+
+    with col4:
+        bezugsweg_col = next((col for col in df.columns if 'bezugsweg' in col.lower()), None)
+        st.session_state.bezugsweg = st.multiselect(
+            "Bezugsweg",
+            options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [],
+            default=st.session_state.bezugsweg
+        )
+
+    # Filterzeile 2
+    col5, col6, col7, col8 = st.columns([2, 3, 4, 1])
+
+    with col5:
+        st.markdown("**Volltext-Verfügbarkeit** ℹ️", unsafe_allow_html=True)
+        selected_volltext = []
+        for val in volltext_werte:
+            if st.checkbox(val, key="volltext_" + val, value=(val in st.session_state.volltext)):
+                selected_volltext.append(val)
+        st.session_state.volltext = selected_volltext
+
+    with col6:
+        st.session_state.dateiformat = st.multiselect(
+            "Dateiformat der verlinkten Werke",
+            options=dateiformat_werte,
+            default=st.session_state.dateiformat
+        )
+
+    with col7:
+        suchfeld = st.text_input("Suche in allen Feldern", key="suchfeld")
+
+    with col8:
+        suchen = st.button("🔍", key="finden_button")
+
+    # Filterung
+    filtered_df = df.copy()
+
+    if st.session_state.kategorie:
+        mask = filtered_df[kategorie_spalten].isin(st.session_state.kategorie).any(axis=1)
+        filtered_df = filtered_df[mask]
+
+    if st.session_state.zeitraum and zeitraum_col:
+        filtered_df = filtered_df[filtered_df[zeitraum_col].isin(st.session_state.zeitraum)]
+
+    if st.session_state.metadatenformat and meta_col:
+        filtered_df = filtered_df[filtered_df[meta_col].isin(st.session_state.metadatenformat)]
+
+    if st.session_state.bezugsweg and bezugsweg_col:
+        filtered_df = filtered_df[filtered_df[bezugsweg_col].isin(st.session_state.bezugsweg)]
+
+    if st.session_state.volltext and volltext_spalte:
+        def all_volltext_selected(cell):
+            cell_values = [v.strip() for v in str(cell).split(',')]
+            return all(vt in cell_values for vt in st.session_state.volltext)
+        mask = filtered_df[volltext_spalte].apply(all_volltext_selected)
+        filtered_df = filtered_df[mask]
+
+    if st.session_state.dateiformat and dateiformat_spalte:
+        def has_any_format(cell):
+            cell_values = [v.strip() for v in str(cell).split(',')]
+            return any(fmt in cell_values for fmt in st.session_state.dateiformat)
+        mask = filtered_df[dateiformat_spalte].apply(has_any_format)
+        filtered_df = filtered_df[mask]
+
+    if suchen and suchfeld:
+        suchwoerter = [w.strip() for w in suchfeld.split() if w.strip()]
+        for wort in suchwoerter:
+            mask = filtered_df.apply(lambda row: row.astype(str).str.contains(wort, case=True, na=False).any(), axis=1)
+            filtered_df = filtered_df[mask]
+
+    # Ergebnisse anzeigen
+    st.header("Suchergebnisse")
+    st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
+    st.dataframe(filtered_df, use_container_width=True, height=400)
+
+    csv_file = download_csv(filtered_df)
+    st.download_button(
+        label="Ergebnisse als CSV herunterladen",
+        data=csv_file,
+        file_name="dnb_datensets.csv",
+        mime="text/csv",
+    )
+
+if __name__ == "__main__":
+    main()
