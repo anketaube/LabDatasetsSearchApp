@@ -38,14 +38,26 @@ def extract_unique_multiselect_options(series):
 
 def main():
     st.set_page_config(layout="wide")
-    col1, col2 = st.columns([1, 5])
+    col1, col2 = st.columns([1, 6])
+
     with col1:
         st.markdown(
-            '<img src="https://www.dnb.de/SiteGlobals/Frontend/DNBWeb/Images/logo.svg?__blob=normal&v=3" width="60">',
-            unsafe_allow_html=True
+            """
+            <div style="display: flex; align-items: center; height: 100%;">
+                <img src="https://www.dnb.de/SiteGlobals/Frontend/DNBWeb/Images/logo.svg?__blob=normal&v=3" width="80" style="margin-right: 10px;">
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
+
     with col2:
-        st.title("DNBLab Datensetsuche")
+        st.markdown(
+            """
+            <h1 style="margin: 0; line-height: 80px;">DNBLab Datensetsuche</h1>
+            """,
+            unsafe_allow_html=True,
+        )
+
 
     # Daten laden
     if 'original_df' not in st.session_state:
@@ -187,6 +199,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
