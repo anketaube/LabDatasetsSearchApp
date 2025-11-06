@@ -44,7 +44,7 @@ def main():
         st.markdown(
             """
             <div style="display: flex; align-items: center; height: 80px;">
-                <img src="https://www.dnb.de/SiteGlobals/Frontend/DNBWeb/Images/logo.svg?__blob=normal&v=3" style="height: 60px; margin-right: 10px;">
+                <img src="https://www.dnb.de/SiteGlobals/Frontend/DNBWeb/Images/logo.svg?__blob=normal&v=3" style="height: 75px; margin-right: 5px;">
             </div>
             """,
             unsafe_allow_html=True,
@@ -57,7 +57,6 @@ def main():
             """,
             unsafe_allow_html=True,
         )
-
 
 
     # Daten laden
@@ -200,6 +199,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
