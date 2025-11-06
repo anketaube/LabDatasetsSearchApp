@@ -44,8 +44,6 @@ def main():
     )
     st.title("DNBLab Datensetsuche")
 
-    st.title("DNBLab Datensetsuche")
-
     # Daten laden
     if 'original_df' not in st.session_state:
         df = load_data()
@@ -186,4 +184,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
