@@ -42,36 +42,28 @@ def clean_zeitraum_entry(entry):
     if pd.isna(entry):
         return entry
     s = str(entry)
-    # Non-breaking space und alle anderen unsichtbaren Zeichen entfernen
     s = s.replace('\u00A0', ' ').replace('\u2009', ' ').replace('\t', ' ')
-    # Alle Whitespaces um den Bindestrich entfernen -> "1913 -" wird "1913-"
     s = re.sub(r'\s*-\s*', '-', s)
-    # Mehrfache Spaces zu einem reduzieren und trimmen
     s = re.sub(r'\s+', ' ', s).strip()
     return s
 
 def get_zeitraum_options(df, zeitraum_col):
     """Erstellt saubere Auswahl: 1913- (ab) + exakte Zeiträume wie 1913-1918"""
-    # Zuerst alle Zeiträume bereinigen
     clean_zeitraeume = df[zeitraum_col].dropna().map(clean_zeitraum_entry).unique()
     
-    # 1. "Ab-Jahr" Optionen (1913- für alle ab 1913) - nur eindeutig
     ab_jahre = set()
     exakte_zeitraeume = set()
     
     for z in clean_zeitraeume:
         z_str = str(z).strip()
-        if z_str.endswith('-'):  # "1913-" 
-            ab_jahr = z_str  # Bereits sauber
-            ab_jahre.add(ab_jahr)
-        elif '-' in z_str and len(z_str.split('-')) == 2:  # "1913-1918"
+        if z_str.endswith('-'):  
+            ab_jahre.add(z_str)
+        elif '-' in z_str and len(z_str.split('-')) == 2:  
             exakte_zeitraeume.add(z_str)
     
-    # 2. Chronologische Sortierung
     ab_options = sorted(list(ab_jahre), key=lambda x: int(x[:-1]))
     exakt_options = sorted(list(exakte_zeitraeume), key=lambda x: int(x.split('-')[0]))
     
-    # 3. Kombinierte Liste ohne Duplikate
     return list(dict.fromkeys(ab_options + exakt_options))
 
 def filter_by_zeitraum(df, zeitraum_col, selected_options):
@@ -79,20 +71,19 @@ def filter_by_zeitraum(df, zeitraum_col, selected_options):
     if not selected_options:
         return df
     
-    # Zeiträume für Filterung bereinigen (gleiche Logik wie bei Options)
     df_clean = df.copy()
     df_clean[zeitraum_col] = df_clean[zeitraum_col].map(clean_zeitraum_entry)
     
     mask = pd.Series([False] * len(df_clean))
     
     for option in selected_options:
-        if option.endswith('-'):  # "Ab 1913" - alle Datensätze ab diesem Jahr
+        if option.endswith('-'):  
             start_jahr = option[:-1]
             jahres_mask = df_clean[zeitraum_col].astype(str).apply(
                 lambda x: str(x).startswith(start_jahr)
             )
             mask = mask | jahres_mask
-        else:  # Exakter Zeitraum "1913-1918"
+        else:  
             exact_mask = df_clean[zeitraum_col].astype(str) == option
             mask = mask | exact_mask
     
@@ -129,21 +120,18 @@ def main():
     else:
         df = st.session_state.original_df
 
-    # Kategorie-Spalten identifizieren (für Filterung, aber NICHT anzeigen)
+    # Spalten identifizieren
     kategorie_spalten = [col for col in df.columns if col.lower().startswith("kategorie")]
-    kategorie_werte = set()
-    for col in kategorie_spalten:
-        kategorie_werte.update(df[col].dropna().unique())
-    kategorie_werte = sorted([str(x) for x in kategorie_werte if str(x).strip() != ""])
-
+    zeitraum_col = next((col for col in df.columns if "zeitraum" in col.lower()), None)
+    meta_col = next((col for col in df.columns if "metadatenformat" in col.lower()), None)
+    bezugsweg_col = next((col for col in df.columns if "bezugsweg" in col.lower()), None)
     volltext_spalte = next((col for col in df.columns if "volltext" in col.lower()), None)
     dateiformat_spalte = next((col for col in df.columns if "dateiformat" in col.lower()), None)
 
+    # Filteroptionen vorbereiten
+    kategorie_werte = sorted(set([str(x) for x in df[kategorie_spalten].stack().dropna() if str(x).strip() != ""]))
     volltext_werte = extract_unique_multiselect_options(df[volltext_spalte]) if volltext_spalte else []
     dateiformat_werte = extract_unique_multiselect_options(df[dateiformat_spalte]) if dateiformat_spalte else []
-
-    # **ZEITRAUM: Saubere "1913-" + "1913-1918" (keine Duplikate, keine Leerzeichen)**
-    zeitraum_col = next((col for col in df.columns if "zeitraum" in col.lower()), None)
     zeitraum_options = get_zeitraum_options(df, zeitraum_col) if zeitraum_col else []
 
     # Filterbereich
@@ -151,105 +139,94 @@ def main():
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.multiselect(
-            "Kategorie",
-            options=kategorie_werte,
-            key="kategorie"
-        )
+        st.multiselect("Kategorie", options=kategorie_werte, key="kategorie")
 
     with col2:
-        st.multiselect(
-            "Zeitraum der Daten",
-            options=zeitraum_options,  # Jetzt sauber: nur "1913-", "1913-1918"
-            key="zeitraum"
-        )
+        st.multiselect("Zeitraum der Daten", options=zeitraum_options, key="zeitraum")
 
     with col3:
-        meta_col = next((col for col in df.columns if "metadatenformat" in col.lower()), None)
-        st.multiselect(
-            "Metadatenformat",
-            options=sorted(df[meta_col].dropna().unique()) if meta_col else [],
-            key="metadatenformat"
-        )
+        st.multiselect("Metadatenformat", options=sorted(df[meta_col].dropna().unique()) if meta_col else [], key="metadatenformat")
 
     with col4:
-        bezugsweg_col = next((col for col in df.columns if "bezugsweg" in col.lower()), None)
-        st.multiselect(
-            "Bezugsweg",
-            options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [],
-            key="bezugsweg"
-        )
+        st.multiselect("Bezugsweg", options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [], key="bezugsweg")
 
     col5, col6, col7 = st.columns([2, 3, 7])
 
     with col5:
-        st.markdown(
-            "**Volltext-Verfügbarkeit** "
-            "[ℹ️](https://github.com/deutsche-nationalbibliothek/dnblab/blob/main/DownloadObjekte.pdf)", 
-            unsafe_allow_html=True
-        )
+        st.markdown("**Volltext-Verfügbarkeit** [ℹ️](https://github.com/deutsche-nationalbibliothek/dnblab/blob/main/DownloadObjekte.pdf)", unsafe_allow_html=True)
         for val in volltext_werte:
             st.checkbox(val, key=f"volltext_{val}")
 
     with col6:
-        st.multiselect(
-            "Dateiformat der verlinkten Werke",
-            options=dateiformat_werte,
-            key="dateiformat"
-        )
+        st.multiselect("Dateiformat der verlinkten Werke", options=dateiformat_werte, key="dateiformat")
 
     with col7:
-        suchfeld = st.text_input(
-            "Suche in allen Feldern",
-            key="suchfeld",
-            placeholder="Suche eingeben..."
-        )
+        st.text_input("Suche in allen Feldern", key="suchfeld", placeholder="Suche eingeben...")
 
-    # Filterlogik
+    # **KORRIGIERTE FILTERLOGIK MIT BOOLESCHEN MASKEN (UND-VERKNÜPFUNG)**
     filtered_df = df.copy()
 
-    # Kategorie (Filterung JA, Anzeige NEIN)
+    # 1. Kategorie-Maske
     selected_kat = st.session_state.get("kategorie", [])
-    if selected_kat:
-        mask = filtered_df[kategorie_spalten].isin(selected_kat).any(axis=1)
-        filtered_df = filtered_df[mask]
+    mask_kategorie = (filtered_df[kategorie_spalten].isin(selected_kat).any(axis=1) if selected_kat 
+                     else pd.Series([True]*len(filtered_df)))
 
-    # **ZEITRAUM: Saubere Filterung**
-    if zeitraum_col and st.session_state.get("zeitraum"):
-        filtered_df = filter_by_zeitraum(filtered_df, zeitraum_col, st.session_state.zeitraum)
+    # 2. Zeitraum-Maske
+    selected_zeitraum = st.session_state.get("zeitraum", [])
+    if selected_zeitraum and zeitraum_col:
+        zeit_df = filter_by_zeitraum(filtered_df, zeitraum_col, selected_zeitraum)
+        mask_zeitraum = filtered_df.index.isin(zeit_df.index)
+    else:
+        mask_zeitraum = pd.Series([True]*len(filtered_df))
 
-    # Metadatenformat
-    if meta_col and st.session_state.get("metadatenformat"):
-        filtered_df = filtered_df[filtered_df[meta_col].isin(st.session_state.metadatenformat)]
+    # 3. Metadatenformat-Maske
+    selected_meta = st.session_state.get("metadatenformat", [])
+    mask_metadatenformat = (filtered_df[meta_col].isin(selected_meta) if selected_meta and meta_col 
+                           else pd.Series([True]*len(filtered_df)))
 
-    # Bezugsweg
-    if bezugsweg_col and st.session_state.get("bezugsweg"):
-        filtered_df = filtered_df[filtered_df[bezugsweg_col].isin(st.session_state.bezugsweg)]
+    # 4. Bezugsweg-Maske
+    selected_bezugsweg = st.session_state.get("bezugsweg", [])
+    mask_bezugsweg = (filtered_df[bezugsweg_col].isin(selected_bezugsweg) if selected_bezugsweg and bezugsweg_col 
+                     else pd.Series([True]*len(filtered_df)))
 
-    # Volltext
+    # 5. Volltext-Maske
     selected_volltext = [v for v in volltext_werte if st.session_state.get(f"volltext_{v}")]
     if selected_volltext and volltext_spalte:
-        def all_selected(cell):
+        def volltext_match(cell):
             return all(v in str(cell).split(",") for v in selected_volltext)
-        filtered_df = filtered_df[filtered_df[volltext_spalte].apply(all_selected)]
+        mask_volltext = filtered_df[volltext_spalte].apply(volltext_match)
+    else:
+        mask_volltext = pd.Series([True]*len(filtered_df))
 
-    # Dateiformat
-    if dateiformat_spalte and st.session_state.get("dateiformat"):
-        def has_any(cell):
-            return any(fmt in str(cell).split(",") for fmt in st.session_state.dateiformat)
-        filtered_df = filtered_df[filtered_df[dateiformat_spalte].apply(has_any)]
+    # 6. Dateiformat-Maske
+    selected_dateiformat = st.session_state.get("dateiformat", [])
+    if selected_dateiformat and dateiformat_spalte:
+        def dateiformat_match(cell):
+            return any(fmt in str(cell).split(",") for fmt in selected_dateiformat)
+        mask_dateiformat = filtered_df[dateiformat_spalte].apply(dateiformat_match)
+    else:
+        mask_dateiformat = pd.Series([True]*len(filtered_df))
 
-    # Suche bei Text-Eingabe
-    if st.session_state.suchfeld and st.session_state.suchfeld.strip():
-        suchworte = [w.strip() for w in st.session_state.suchfeld.split() if w.strip()]
+    # 7. Suchfeld-Maske
+    suchtext = st.session_state.get("suchfeld", "").strip()
+    if suchtext:
+        suchworte = [w.strip() for w in suchtext.split() if w.strip()]
+        mask_suche = pd.Series([True]*len(filtered_df))
         for wort in suchworte:
-            mask = filtered_df.apply(
-                lambda row: row.astype(str).str.contains(wort, case=True, na=False).any(),
-                axis=1,
+            mask_wort = filtered_df.astype(str).apply(
+                lambda row: row.str.contains(wort, case=True, na=False).any(), axis=1
             )
-            filtered_df = filtered_df[mask]
+            mask_suche = mask_suche & mask_wort
+    else:
+        mask_suche = pd.Series([True]*len(filtered_df))
 
-    # KATEGORIE-SPALTEN AUS DATAFRAME ENTFERNEN
+    # **ALLE MASKEN MIT UND (&) KOMBINIEREN**
+    final_mask = (mask_kategorie & mask_zeitraum & mask_metadatenformat & 
+                  mask_bezugsweg & mask_volltext & mask_dateiformat & mask_suche)
+    
+    filtered_df = df[final_mask].copy()
+
+    # KATEGORIE-SPALTEN AUS ANZEIGE ENTFERNEN
     display_df = filtered_df.drop(columns=kategorie_spalten, errors='ignore')
 
     st.header("Suchergebnisse")
