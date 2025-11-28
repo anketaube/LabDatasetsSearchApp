@@ -37,48 +37,66 @@ def extract_unique_multiselect_options(series):
             unique_values.add(value.strip())
     return sorted(unique_values)
 
+def clean_zeitraum_entry(entry):
+    """Bereinigt Zeiträume: entfernt alle Whitespaces um '-', Non-breaking spaces, etc."""
+    if pd.isna(entry):
+        return entry
+    s = str(entry)
+    # Non-breaking space und alle anderen unsichtbaren Zeichen entfernen
+    s = s.replace('\u00A0', ' ').replace('\u2009', ' ').replace('\t', ' ')
+    # Alle Whitespaces um den Bindestrich entfernen -> "1913 -" wird "1913-"
+    s = re.sub(r'\s*-\s*', '-', s)
+    # Mehrfache Spaces zu einem reduzieren und trimmen
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s
+
 def get_zeitraum_options(df, zeitraum_col):
-    """Erstellt Auswahl: 1913- (für alle ab 1913) + exakte Zeiträume wie 1913-1918"""
-    echte_zeitraeume = df[zeitraum_col].dropna().unique()
+    """Erstellt saubere Auswahl: 1913- (ab) + exakte Zeiträume wie 1913-1918"""
+    # Zuerst alle Zeiträume bereinigen
+    clean_zeitraeume = df[zeitraum_col].dropna().map(clean_zeitraum_entry).unique()
     
-    # 1. "Ab-Jahr" Optionen (1913- für alle Datensätze ab 1913)
+    # 1. "Ab-Jahr" Optionen (1913- für alle ab 1913) - nur eindeutig
     ab_jahre = set()
     exakte_zeitraeume = set()
     
-    for z in echte_zeitraeume:
+    for z in clean_zeitraeume:
         z_str = str(z).strip()
-        if z_str.endswith('-'):
-            ab_jahr = z_str[:-1] + '-'
+        if z_str.endswith('-'):  # "1913-" 
+            ab_jahr = z_str  # Bereits sauber
             ab_jahre.add(ab_jahr)
-        elif '-' in z_str and len(z_str.split('-')) == 2:
+        elif '-' in z_str and len(z_str.split('-')) == 2:  # "1913-1918"
             exakte_zeitraeume.add(z_str)
     
     # 2. Chronologische Sortierung
     ab_options = sorted(list(ab_jahre), key=lambda x: int(x[:-1]))
     exakt_options = sorted(list(exakte_zeitraeume), key=lambda x: int(x.split('-')[0]))
     
-    # 3. Kombinierte Liste: Ab-Optionen zuerst, dann exakte Zeiträume
-    return ab_options + exakt_options
+    # 3. Kombinierte Liste ohne Duplikate
+    return list(dict.fromkeys(ab_options + exakt_options))
 
 def filter_by_zeitraum(df, zeitraum_col, selected_options):
     """Filtert: '1913-' = alle ab 1913, '1913-1918' = exakt diesen Zeitraum"""
     if not selected_options:
         return df
     
-    mask = pd.Series([False] * len(df))
+    # Zeiträume für Filterung bereinigen (gleiche Logik wie bei Options)
+    df_clean = df.copy()
+    df_clean[zeitraum_col] = df_clean[zeitraum_col].map(clean_zeitraum_entry)
+    
+    mask = pd.Series([False] * len(df_clean))
     
     for option in selected_options:
         if option.endswith('-'):  # "Ab 1913" - alle Datensätze ab diesem Jahr
             start_jahr = option[:-1]
-            jahres_mask = df[zeitraum_col].astype(str).apply(
+            jahres_mask = df_clean[zeitraum_col].astype(str).apply(
                 lambda x: str(x).startswith(start_jahr)
             )
             mask = mask | jahres_mask
         else:  # Exakter Zeitraum "1913-1918"
-            exact_mask = df[zeitraum_col].astype(str) == option
+            exact_mask = df_clean[zeitraum_col].astype(str) == option
             mask = mask | exact_mask
     
-    return df[mask]
+    return df_clean[mask]
 
 def main():
     st.set_page_config(layout="wide")
@@ -124,7 +142,7 @@ def main():
     volltext_werte = extract_unique_multiselect_options(df[volltext_spalte]) if volltext_spalte else []
     dateiformat_werte = extract_unique_multiselect_options(df[dateiformat_spalte]) if dateiformat_spalte else []
 
-    # **ZEITRAUM: "1913-" (ab) + "1913-1918" (exakt), chronologisch**
+    # **ZEITRAUM: Saubere "1913-" + "1913-1918" (keine Duplikate, keine Leerzeichen)**
     zeitraum_col = next((col for col in df.columns if "zeitraum" in col.lower()), None)
     zeitraum_options = get_zeitraum_options(df, zeitraum_col) if zeitraum_col else []
 
@@ -142,7 +160,7 @@ def main():
     with col2:
         st.multiselect(
             "Zeitraum der Daten",
-            options=zeitraum_options,
+            options=zeitraum_options,  # Jetzt sauber: nur "1913-", "1913-1918"
             key="zeitraum"
         )
 
@@ -196,7 +214,7 @@ def main():
         mask = filtered_df[kategorie_spalten].isin(selected_kat).any(axis=1)
         filtered_df = filtered_df[mask]
 
-    # **ZEITRAUM: "1913-" = alle ab 1913, "1913-1918" = exakt**
+    # **ZEITRAUM: Saubere Filterung**
     if zeitraum_col and st.session_state.get("zeitraum"):
         filtered_df = filter_by_zeitraum(filtered_df, zeitraum_col, st.session_state.zeitraum)
 
