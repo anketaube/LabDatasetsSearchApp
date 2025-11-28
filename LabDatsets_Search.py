@@ -31,6 +31,7 @@ def download_csv(df):
     return b
 
 def extract_unique_multiselect_options(series):
+    """Extrahiert einzigartige Werte aus kommagetrennten Feldern"""
     unique_values = set()
     for entry in series.dropna():
         for value in str(entry).split(','):
@@ -89,6 +90,23 @@ def filter_by_zeitraum(df, zeitraum_col, selected_options):
     
     return df_clean[mask]
 
+def robust_text_search(df, suchtext):
+    """Erweiterte Textsuche: case-insensitive, Teilstrings, alle Spalten"""
+    if not suchtext or not suchtext.strip():
+        return pd.Series([True] * len(df))
+    
+    suchworte = [w.strip().lower() for w in suchtext.split() if w.strip()]
+    mask = pd.Series([True] * len(df))
+    
+    for wort in suchworte:
+        wort_mask = df.astype(str).apply(
+            lambda row: row.str.lower().str.contains(wort, na=False, regex=False).any(), 
+            axis=1
+        )
+        mask = mask & wort_mask
+    
+    return mask
+
 def main():
     st.set_page_config(layout="wide")
     cols = st.columns([1, 6])
@@ -132,6 +150,7 @@ def main():
     kategorie_werte = sorted(set([str(x) for x in df[kategorie_spalten].stack().dropna() if str(x).strip() != ""]))
     volltext_werte = extract_unique_multiselect_options(df[volltext_spalte]) if volltext_spalte else []
     dateiformat_werte = extract_unique_multiselect_options(df[dateiformat_spalte]) if dateiformat_spalte else []
+    meta_werte = extract_unique_multiselect_options(df[meta_col]) if meta_col else []
     zeitraum_options = get_zeitraum_options(df, zeitraum_col) if zeitraum_col else []
 
     # Filterbereich
@@ -145,7 +164,7 @@ def main():
         st.multiselect("Zeitraum der Daten", options=zeitraum_options, key="zeitraum")
 
     with col3:
-        st.multiselect("Metadatenformat", options=sorted(df[meta_col].dropna().unique()) if meta_col else [], key="metadatenformat")
+        st.multiselect("Metadatenformat", options=meta_werte, key="metadatenformat")  # Saubere Einzelwerte
 
     with col4:
         st.multiselect("Bezugsweg", options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [], key="bezugsweg")
@@ -158,30 +177,12 @@ def main():
             st.checkbox(val, key=f"volltext_{val}")
 
     with col6:
-        st.multiselect("Dateiformat der verlinkten Werke", options=dateiformat_werte, key="dateiformat")
+        st.multiselect("Dateiformat der verlinkten Werke", options=dateiformat_werte, key="dateiformat")  # Saubere Einzelwerte
 
     with col7:
         st.text_input("Suche in allen Feldern", key="suchfeld", placeholder="Suche eingeben...")
 
-    # **ROBUSTE TEXTSUCHE - FALLS "Exil" nicht gefunden wird**
-    def robust_text_search(df, suchtext):
-        """Erweiterte Textsuche: case-insensitive, Teilstrings, alle Spalten"""
-        if not suchtext or not suchtext.strip():
-            return pd.Series([True] * len(df))
-        
-        suchworte = [w.strip().lower() for w in suchtext.split() if w.strip()]
-        mask = pd.Series([True] * len(df))
-        
-        for wort in suchworte:
-            wort_mask = df.astype(str).apply(
-                lambda row: row.str.lower().str.contains(wort, na=False, regex=False).any(), 
-                axis=1
-            )
-            mask = mask & wort_mask
-        
-        return mask
-
-    # **KORRIGIERTE FILTERLOGIK MIT BOOLESCHEN MASKEN (UND-VERKNÜPFUNG)**
+    # **KORRIGIERTE FILTERLOGIK MIT BOOL. MASKEN**
     filtered_df = df.copy()
 
     # 1. Kategorie-Maske
@@ -197,17 +198,22 @@ def main():
     else:
         mask_zeitraum = pd.Series([True]*len(filtered_df))
 
-    # 3. Metadatenformat-Maske
+    # 3. **METADATENFORMAT: OR innerhalb der Zelle (flac, MP3 → flac ODER MP3)**
     selected_meta = st.session_state.get("metadatenformat", [])
-    mask_metadatenformat = (filtered_df[meta_col].astype(str).isin(selected_meta) 
-                           if selected_meta and meta_col else pd.Series([True]*len(filtered_df)))
+    if selected_meta and meta_col:
+        def meta_match(cell):
+            cell_values = [v.strip().lower() for v in str(cell).split(",")]
+            return any(sel.strip().lower() in cell_values for sel in selected_meta)
+        mask_metadatenformat = filtered_df[meta_col].apply(meta_match)
+    else:
+        mask_metadatenformat = pd.Series([True]*len(filtered_df))
 
     # 4. Bezugsweg-Maske
     selected_bezugsweg = st.session_state.get("bezugsweg", [])
     mask_bezugsweg = (filtered_df[bezugsweg_col].astype(str).isin(selected_bezugsweg) 
                      if selected_bezugsweg and bezugsweg_col else pd.Series([True]*len(filtered_df)))
 
-    # 5. Volltext-Maske
+    # 5. Volltext-Maske (ALL - UND innerhalb der Auswahl)
     selected_volltext = [v for v in volltext_werte if st.session_state.get(f"volltext_{v}")]
     if selected_volltext and volltext_spalte:
         def volltext_match(cell):
@@ -216,20 +222,21 @@ def main():
     else:
         mask_volltext = pd.Series([True]*len(filtered_df))
 
-    # 6. Dateiformat-Maske
+    # 6. **DATEIFORMAT: OR innerhalb der Zelle (flac, MP3 → flac ODER MP3)**
     selected_dateiformat = st.session_state.get("dateiformat", [])
     if selected_dateiformat and dateiformat_spalte:
         def dateiformat_match(cell):
-            return any(fmt.strip() in str(cell).split(",") for fmt in selected_dateiformat)
+            cell_values = [v.strip().lower() for v in str(cell).split(",")]
+            return any(sel.strip().lower() in cell_values for sel in selected_dateiformat)
         mask_dateiformat = filtered_df[dateiformat_spalte].apply(dateiformat_match)
     else:
         mask_dateiformat = pd.Series([True]*len(filtered_df))
 
-    # 7. **VERBESSERTE TEXTSUCHE** - case-insensitive, robust
+    # 7. TEXTSUCHE
     suchtext = st.session_state.get("suchfeld", "").strip()
     mask_suche = robust_text_search(filtered_df, suchtext)
 
-    # **ALLE MASKEN MIT UND (&) KOMBINIEREN**
+    # **ALLE FILTER MIT UND KOMBINIEREN**
     final_mask = (mask_kategorie & mask_zeitraum & mask_metadatenformat & 
                   mask_bezugsweg & mask_volltext & mask_dateiformat & mask_suche)
     
