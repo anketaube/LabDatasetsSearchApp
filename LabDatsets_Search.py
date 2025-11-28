@@ -163,13 +163,31 @@ def main():
     with col7:
         st.text_input("Suche in allen Feldern", key="suchfeld", placeholder="Suche eingeben...")
 
+    # **ROBUSTE TEXTSUCHE - FALLS "Exil" nicht gefunden wird**
+    def robust_text_search(df, suchtext):
+        """Erweiterte Textsuche: case-insensitive, Teilstrings, alle Spalten"""
+        if not suchtext or not suchtext.strip():
+            return pd.Series([True] * len(df))
+        
+        suchworte = [w.strip().lower() for w in suchtext.split() if w.strip()]
+        mask = pd.Series([True] * len(df))
+        
+        for wort in suchworte:
+            wort_mask = df.astype(str).apply(
+                lambda row: row.str.lower().str.contains(wort, na=False, regex=False).any(), 
+                axis=1
+            )
+            mask = mask & wort_mask
+        
+        return mask
+
     # **KORRIGIERTE FILTERLOGIK MIT BOOLESCHEN MASKEN (UND-VERKNÜPFUNG)**
     filtered_df = df.copy()
 
     # 1. Kategorie-Maske
     selected_kat = st.session_state.get("kategorie", [])
-    mask_kategorie = (filtered_df[kategorie_spalten].isin(selected_kat).any(axis=1) if selected_kat 
-                     else pd.Series([True]*len(filtered_df)))
+    mask_kategorie = (filtered_df[kategorie_spalten].astype(str).isin(selected_kat).any(axis=1) 
+                     if selected_kat else pd.Series([True]*len(filtered_df)))
 
     # 2. Zeitraum-Maske
     selected_zeitraum = st.session_state.get("zeitraum", [])
@@ -181,19 +199,19 @@ def main():
 
     # 3. Metadatenformat-Maske
     selected_meta = st.session_state.get("metadatenformat", [])
-    mask_metadatenformat = (filtered_df[meta_col].isin(selected_meta) if selected_meta and meta_col 
-                           else pd.Series([True]*len(filtered_df)))
+    mask_metadatenformat = (filtered_df[meta_col].astype(str).isin(selected_meta) 
+                           if selected_meta and meta_col else pd.Series([True]*len(filtered_df)))
 
     # 4. Bezugsweg-Maske
     selected_bezugsweg = st.session_state.get("bezugsweg", [])
-    mask_bezugsweg = (filtered_df[bezugsweg_col].isin(selected_bezugsweg) if selected_bezugsweg and bezugsweg_col 
-                     else pd.Series([True]*len(filtered_df)))
+    mask_bezugsweg = (filtered_df[bezugsweg_col].astype(str).isin(selected_bezugsweg) 
+                     if selected_bezugsweg and bezugsweg_col else pd.Series([True]*len(filtered_df)))
 
     # 5. Volltext-Maske
     selected_volltext = [v for v in volltext_werte if st.session_state.get(f"volltext_{v}")]
     if selected_volltext and volltext_spalte:
         def volltext_match(cell):
-            return all(v in str(cell).split(",") for v in selected_volltext)
+            return all(v.strip() in str(cell).split(",") for v in selected_volltext)
         mask_volltext = filtered_df[volltext_spalte].apply(volltext_match)
     else:
         mask_volltext = pd.Series([True]*len(filtered_df))
@@ -202,23 +220,14 @@ def main():
     selected_dateiformat = st.session_state.get("dateiformat", [])
     if selected_dateiformat and dateiformat_spalte:
         def dateiformat_match(cell):
-            return any(fmt in str(cell).split(",") for fmt in selected_dateiformat)
+            return any(fmt.strip() in str(cell).split(",") for fmt in selected_dateiformat)
         mask_dateiformat = filtered_df[dateiformat_spalte].apply(dateiformat_match)
     else:
         mask_dateiformat = pd.Series([True]*len(filtered_df))
 
-    # 7. Suchfeld-Maske
+    # 7. **VERBESSERTE TEXTSUCHE** - case-insensitive, robust
     suchtext = st.session_state.get("suchfeld", "").strip()
-    if suchtext:
-        suchworte = [w.strip() for w in suchtext.split() if w.strip()]
-        mask_suche = pd.Series([True]*len(filtered_df))
-        for wort in suchworte:
-            mask_wort = filtered_df.astype(str).apply(
-                lambda row: row.str.contains(wort, case=True, na=False).any(), axis=1
-            )
-            mask_suche = mask_suche & mask_wort
-    else:
-        mask_suche = pd.Series([True]*len(filtered_df))
+    mask_suche = robust_text_search(filtered_df, suchtext)
 
     # **ALLE MASKEN MIT UND (&) KOMBINIEREN**
     final_mask = (mask_kategorie & mask_zeitraum & mask_metadatenformat & 
@@ -231,6 +240,10 @@ def main():
 
     st.header("Suchergebnisse")
     st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
+    
+    # DEBUG-INFO für Exil-Suche
+    if suchtext.lower() == "exil":
+        st.info(f"🔍 **Exil-Suche Debug:** {len(df[robust_text_search(df, 'exil')])} Treffer in Originaldaten")
     
     # DATAFRAME MIT BLAUEN URL-LINKS
     url_spalte = next((col for col in display_df.columns if col.lower() == 'url'), None)
