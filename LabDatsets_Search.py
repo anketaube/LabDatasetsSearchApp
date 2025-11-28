@@ -3,7 +3,6 @@ import pandas as pd
 import requests
 from io import BytesIO
 import io
-import re
 
 GITHUB_EXCEL_URL = "https://raw.githubusercontent.com/anketaube/LabDatasetsSearchApp/main/Datensets_Filter.xlsx"
 
@@ -36,37 +35,6 @@ def extract_unique_multiselect_options(series):
         for value in str(entry).split(','):
             unique_values.add(value.strip())
     return sorted(unique_values)
-
-def parse_zeitraum_options(zeitraum_series):
-    """Zeitraum-Optionen chronologisch parsen und gruppieren"""
-    zeitraum_set = set()
-    
-    for entry in zeitraum_series.dropna():
-        entry_str = str(entry).strip()
-        # Regex für Zeiträume wie "1913", "1913-1918", "1913-"
-        match = re.match(r'^(\d{4})(-\d{4})?(-)?$', entry_str)
-        if match:
-            start = int(match.group(1))
-            zeitraum_set.add(entry_str)
-    
-    # Chronologisch sortieren
-    zeitraum_list = sorted(list(zeitraum_set), key=lambda x: int(re.match(r'^(\d{4})', x).group(1)))
-    
-    # Gruppierte Optionen erstellen
-    grouped_options = []
-    current_decade = None
-    
-    for z in zeitraum_list:
-        start_year = int(re.match(r'^(\d{4})', z).group(1))
-        decade = (start_year // 10) * 10
-        
-        if decade != current_decade:
-            grouped_options.append(f"{decade}s")
-            current_decade = decade
-        
-        grouped_options.append(z)
-    
-    return grouped_options
 
 def main():
     st.set_page_config(layout="wide")
@@ -112,9 +80,15 @@ def main():
     volltext_werte = extract_unique_multiselect_options(df[volltext_spalte]) if volltext_spalte else []
     dateiformat_werte = extract_unique_multiselect_options(df[dateiformat_spalte]) if dateiformat_spalte else []
 
-    # **ZEITRAUM CHRONOLOGISCH GESORTIERT UND GRUPPIERT**
+    # **ZEITRAUM - NUR ECHTE WERTE AUS DER DATEI, CHRONOLOGISCH GESORTIERT**
     zeitraum_col = next((col for col in df.columns if "zeitraum" in col.lower()), None)
-    zeitraum_options = parse_zeitraum_options(df[zeitraum_col]) if zeitraum_col else []
+    if zeitraum_col:
+        zeitraum_options = sorted(
+            df[zeitraum_col].dropna().unique(), 
+            key=lambda x: int(str(x).split('-')[0]) if str(x).split('-')[0].isdigit() else 9999
+        )
+    else:
+        zeitraum_options = []
 
     # Filterbereich
     st.header("Suchfilter")
@@ -130,7 +104,7 @@ def main():
     with col2:
         st.multiselect(
             "Zeitraum der Daten",
-            options=zeitraum_options,  # Chronologisch sortiert + gruppiert
+            options=zeitraum_options,  # NUR echte Werte, chronologisch sortiert
             key="zeitraum"
         )
 
@@ -184,11 +158,9 @@ def main():
         mask = filtered_df[kategorie_spalten].isin(selected_kat).any(axis=1)
         filtered_df = filtered_df[mask]
 
-    # **ZEITRAUM-FILTERUNG (exakte Matches)**
+    # Zeitraum (exakte Matches der echten Werte)
     if zeitraum_col and st.session_state.get("zeitraum"):
-        selected_zeitraeume = st.session_state.zeitraum
-        mask = filtered_df[zeitraum_col].astype(str).isin(selected_zeitraeume)
-        filtered_df = filtered_df[mask]
+        filtered_df = filtered_df[filtered_df[zeitraum_col].astype(str).isin(st.session_state.zeitraum)]
 
     # Metadatenformat
     if meta_col and st.session_state.get("metadatenformat"):
