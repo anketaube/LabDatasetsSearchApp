@@ -67,7 +67,7 @@ def main():
     else:
         df = st.session_state.original_df
 
-    # Spalten identifizieren
+    # Kategorie-Spalten identifizieren (für Filterung, aber NICHT anzeigen)
     kategorie_spalten = [col for col in df.columns if col.lower().startswith("kategorie")]
     kategorie_werte = set()
     for col in kategorie_spalten:
@@ -143,7 +143,7 @@ def main():
     # Filterlogik
     filtered_df = df.copy()
 
-    # Kategorie
+    # Kategorie (Filterung JA, Anzeige NEIN)
     selected_kat = st.session_state.get("kategorie", [])
     if selected_kat:
         mask = filtered_df[kategorie_spalten].isin(selected_kat).any(axis=1)
@@ -184,26 +184,40 @@ def main():
             )
             filtered_df = filtered_df[mask]
 
+    # **KATEGORIE-SPALTE AUS DATAFRAME ENTFERNEN** (aber weiter filterbar)
+    display_df = filtered_df.drop(columns=kategorie_spalten, errors='ignore')
+
     st.header("Suchergebnisse")
     st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
     
-    # **VOLLE SICHTBARKEIT - ALLE SPALTEN + BREITE URL-SPALTE**
+    # **DATAFRAME MIT VERSTECKTEN KATEGORIE-SPALTE + BLAUE URL-LINKS**
+    url_spalte = next((col for col in display_df.columns if col.lower() == 'url'), None)
+    
+    column_config = {
+        **{col: st.column_config.Column(width="medium") for col in display_df.columns if col != url_spalte},
+    }
+    
+    if url_spalte:
+        column_config[url_spalte] = st.column_config.LinkColumn(
+            "URL",
+            width="large",
+            help="Auf Datensatz-Seite gehen"
+        )
+    
+    # Kategorie-Spalten verstecken
+    for kat_col in kategorie_spalten:
+        if kat_col in column_config:
+            column_config[kat_col] = None
+
     st.dataframe(
-        filtered_df, 
+        display_df, 
         use_container_width=True, 
         height=600,
-        column_config={
-            **{col: st.column_config.Column(width="medium") for col in filtered_df.columns[:-1]},
-            filtered_df.columns[-1]: st.column_config.Column(  # Letzte Spalte (URLs) EXTRA BREIT
-                "URL",
-                width="large",
-                disabled=True
-            )
-        },
+        column_config=column_config,
         hide_index=True
     )
 
-    csv_file = download_csv(filtered_df)
+    csv_file = download_csv(filtered_df)  # Vollständige Daten (inkl. Kategorien) zum Download
     st.download_button(
         label="Ergebnisse als CSV herunterladen",
         data=csv_file,
