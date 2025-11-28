@@ -115,7 +115,7 @@ def main():
             key="bezugsweg"
         )
 
-    col5, col6, col7 = st.columns([2, 3, 7])  # col8 entfernt
+    col5, col6, col7 = st.columns([2, 3, 7])
 
     with col5:
         st.markdown(
@@ -137,7 +137,7 @@ def main():
         suchfeld = st.text_input(
             "Suche in allen Feldern",
             key="suchfeld",
-            placeholder="Enter drücken zum Suchen..."
+            placeholder="Suche eingeben..."
         )
 
     # Filterlogik
@@ -174,7 +174,7 @@ def main():
             return any(fmt in str(cell).split(",") for fmt in st.session_state.dateiformat)
         filtered_df = filtered_df[filtered_df[dateiformat_spalte].apply(has_any)]
 
-    # SUCHE NUR BEI ENTER (on_change entfernt)
+    # Suche bei Text-Eingabe
     if st.session_state.suchfeld and st.session_state.suchfeld.strip():
         suchworte = [w.strip() for w in st.session_state.suchfeld.split() if w.strip()]
         for wort in suchworte:
@@ -186,7 +186,22 @@ def main():
 
     st.header("Suchergebnisse")
     st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
-    st.dataframe(filtered_df, use_container_width=True, height=400)
+    
+    # **VOLLE SICHTBARKEIT - ALLE SPALTEN + BREITE URL-SPALTE**
+    st.dataframe(
+        filtered_df, 
+        use_container_width=True, 
+        height=600,
+        column_config={
+            **{col: st.column_config.Column(width="medium") for col in filtered_df.columns[:-1]},
+            filtered_df.columns[-1]: st.column_config.Column(  # Letzte Spalte (URLs) EXTRA BREIT
+                "URL",
+                width="large",
+                disabled=True
+            )
+        },
+        hide_index=True
+    )
 
     csv_file = download_csv(filtered_df)
     st.download_button(
