@@ -3,15 +3,8 @@ import pandas as pd
 import requests
 from io import BytesIO
 import io
-import base64
 
 GITHUB_EXCEL_URL = "https://raw.githubusercontent.com/anketaube/LabDatasetsSearchApp/main/Datensets_Filter.xlsx"
-ICON_URL = "https://raw.githubusercontent.com/anketaube/LabDatasetsSearchApp/main/751381.png"
-
-@st.cache_data
-def get_icon(icon_url):
-    response = requests.get(icon_url)
-    return base64.b64encode(response.content).decode()
 
 def load_data():
     try:
@@ -43,9 +36,6 @@ def extract_unique_multiselect_options(series):
             unique_values.add(value.strip())
     return sorted(unique_values)
 
-def set_search_flag():
-    st.session_state['finden_button'] = True
-
 def main():
     st.set_page_config(layout="wide")
     cols = st.columns([1, 6])
@@ -67,9 +57,6 @@ def main():
             """,
             unsafe_allow_html=True,
         )
-
-    # Icon laden
-    icon_data = get_icon(ICON_URL)
 
     # Daten laden
     if "original_df" not in st.session_state:
@@ -128,7 +115,7 @@ def main():
             key="bezugsweg"
         )
 
-    col5, col6, col7, col8 = st.columns([2, 3, 4, 1])
+    col5, col6, col7 = st.columns([2, 3, 7])  # col8 entfernt
 
     with col5:
         st.markdown(
@@ -147,25 +134,11 @@ def main():
         )
 
     with col7:
-        st.text_input(
+        suchfeld = st.text_input(
             "Suche in allen Feldern",
             key="suchfeld",
-            on_change=set_search_flag
+            placeholder="Enter drücken zum Suchen..."
         )
-
-    with col8:
-        if st.button(
-            f"""
-            <div style='display: flex; align-items: center; justify-content: center; height: 100%;'>
-                <img src='data:image/png;base64,{icon_data}' style='height: 20px; width: 20px; margin-right: 4px;' />
-                <span style='font-weight: bold;'>Finden</span>
-            </div>
-            """,
-            key="finden_button",
-            help="Suche starten (Enter oder Klick)"
-        ):
-
-            st.session_state['finden_button'] = True
 
     # Filterlogik
     filtered_df = df.copy()
@@ -201,8 +174,8 @@ def main():
             return any(fmt in str(cell).split(",") for fmt in st.session_state.dateiformat)
         filtered_df = filtered_df[filtered_df[dateiformat_spalte].apply(has_any)]
 
-    # Suchfeld - Enter oder Button
-    if st.session_state.get("finden_button", False) and st.session_state.get("suchfeld"):
+    # SUCHE NUR BEI ENTER (on_change entfernt)
+    if st.session_state.suchfeld and st.session_state.suchfeld.strip():
         suchworte = [w.strip() for w in st.session_state.suchfeld.split() if w.strip()]
         for wort in suchworte:
             mask = filtered_df.apply(
@@ -210,9 +183,6 @@ def main():
                 axis=1,
             )
             filtered_df = filtered_df[mask]
-        # SICHERES Zurücksetzen des Flags
-        if 'finden_button' in st.session_state:
-            st.session_state.finden_button = False
 
     st.header("Suchergebnisse")
     st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
