@@ -3,8 +3,15 @@ import pandas as pd
 import requests
 from io import BytesIO
 import io
+import base64
 
 GITHUB_EXCEL_URL = "https://raw.githubusercontent.com/anketaube/LabDatasetsSearchApp/main/Datensets_Filter.xlsx"
+ICON_URL = "https://raw.githubusercontent.com/anketaube/LabDatasetsSearchApp/main/751381.png"
+
+@st.cache_data
+def get_icon(icon_url):
+    response = requests.get(icon_url)
+    return base64.b64encode(response.content).decode()
 
 def load_data():
     try:
@@ -60,6 +67,9 @@ def main():
             """,
             unsafe_allow_html=True,
         )
+
+    # Icon laden
+    icon_data = get_icon(ICON_URL)
 
     # Daten laden
     if "original_df" not in st.session_state:
@@ -144,7 +154,18 @@ def main():
         )
 
     with col8:
-        st.button("Suchen", key="finden_button", use_container_width=True)
+        if st.button(
+            f"""
+            <div style='display: flex; align-items: center; justify-content: center; height: 100%;'>
+                <img src='data:image/png;base64,{icon_data}' style='height: 20px; width: 20px; margin-right: 4px;' />
+                <span style='font-weight: bold;'>Finden</span>
+            </div>
+            """,
+            key="finden_button",
+            help="Suche starten (Enter oder Klick)"
+        ):
+
+            st.session_state['finden_button'] = True
 
     # Filterlogik
     filtered_df = df.copy()
@@ -181,7 +202,7 @@ def main():
         filtered_df = filtered_df[filtered_df[dateiformat_spalte].apply(has_any)]
 
     # Suchfeld - Enter oder Button
-    if st.session_state.get("finden_button") and st.session_state.suchfeld:
+    if st.session_state.get("finden_button", False) and st.session_state.get("suchfeld"):
         suchworte = [w.strip() for w in st.session_state.suchfeld.split() if w.strip()]
         for wort in suchworte:
             mask = filtered_df.apply(
@@ -189,7 +210,9 @@ def main():
                 axis=1,
             )
             filtered_df = filtered_df[mask]
-        st.session_state['finden_button'] = False  # Flag zurücksetzen
+        # SICHERES Zurücksetzen des Flags
+        if 'finden_button' in st.session_state:
+            st.session_state.finden_button = False
 
     st.header("Suchergebnisse")
     st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
