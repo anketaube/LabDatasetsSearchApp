@@ -96,77 +96,93 @@ def main():
     
     cols = st.columns([1, 6])
     with cols[0]:
-        st.markdown("# DNB Lab Datensets")
+        st.markdown(
+            """
+            # DNB Lab Datensets
+            Filter für DNB Lab Datensets
+            """,
+            unsafe_allow_html=True
+        )
     
     df = load_data()
     if df is None:
         return
 
-    # Sidebar mit deutschen Texten (Änderung 1)
-    st.sidebar.header("🔍 Filter")
-    
+    st.sidebar.header("🔍 Filter")  # ✅ Änderung 1: Deutsch
+
     # Freitextsuche
-    suchtext = st.sidebar.text_input("Freitextsuche", placeholder="Begriffe in allen Feldern")
-    
-    # Zeitraum - EXAKTER Spaltenname aus Excel
-    zeitraum_options = get_zeitraum_options(df, "Zeitraum der Daten")
-    selected_zeitraeume = st.sidebar.multiselect(
-        "Zeitraum", 
-        options=zeitraum_options, 
-        default=[], 
-        placeholder="Zeitraum wählen"
+    suchtext = st.sidebar.text_input(
+        "Freitextsuche", 
+        placeholder="Begriffe in allen Spalten suchen"  # ✅ Änderung 1: Deutsch
     )
-    
-    # Metadatenformat - EXAKTER Spaltenname
+
+    # Zeitraum
+    zeitraum_options = get_zeitraum_options(df, "Zeitraum der Daten")  # ✅ Exakter Spaltenname
+    selected_zeitraeume = st.sidebar.multiselect(
+        "Zeitraum",
+        options=zeitraum_options,
+        default=[],
+        placeholder="Bitte auswählen"  # ✅ Änderung 1: Deutsch
+    )
+
+    # Metadatenformat
     metadatenformat_options = extract_unique_multiselect_options(df["Metadatenformat"])
     selected_metadatenformat = st.sidebar.multiselect(
-        "Metadatenformat", 
-        options=metadatenformat_options, 
-        default=[], 
-        placeholder="Formate wählen"
+        "Metadatenformat",
+        options=metadatenformat_options,
+        default=[],
+        placeholder="Bitte auswählen"  # ✅ Änderung 1: Deutsch
     )
     
-    # Bezugsweg - EXAKTER Spaltenname (Änderung 4)
+    # NEU: Bezugsweg (Änderung 4)
     bezugsweg_options = extract_unique_multiselect_options(df["Bezugsweg"])
     selected_bezugsweg = st.sidebar.multiselect(
-        "Bezugsweg", 
-        options=bezugsweg_options, 
-        default=[], 
-        placeholder="Wege wählen"
+        "Bezugsweg",
+        options=bezugsweg_options,
+        default=[],
+        placeholder="Bitte auswählen"  # ✅ Änderung 1+4
     )
-    
-    # Filterlogik
+
+    # Filter anwenden
     df_gefiltert = df.copy()
-    
+
     # Freitext
     text_mask = robust_text_search(df_gefiltert, suchtext)
     df_gefiltert = df_gefiltert[text_mask]
-    
+
     # Zeitraum
     df_gefiltert = filter_by_zeitraum(df_gefiltert, "Zeitraum der Daten", selected_zeitraeume)
-    
-    # Metadatenformat
+
+    # Metadatenformat-Filter
     if selected_metadatenformat:
         mask_metadaten = df_gefiltert["Metadatenformat"].astype(str).apply(
             lambda x: any(opt in [v.strip() for v in str(x).split(",")] for opt in selected_metadatenformat)
         )
         df_gefiltert = df_gefiltert[mask_metadaten]
-    
-    # Bezugsweg
+
+    # Bezugsweg-Filter (NEU - Änderung 4)
     if selected_bezugsweg:
         mask_bezugsweg = df_gefiltert["Bezugsweg"].astype(str).apply(
             lambda x: any(opt in [v.strip() for v in str(x).split(",")] for opt in selected_bezugsweg)
         )
         df_gefiltert = df_gefiltert[mask_bezugsweg]
-    
-    # Ergebnis (Änderungen 2+3)
+
+    # KEINE DEBUG-AUSGABEN (Änderung 2) 
+    # ✅ Alle st.write("Debug...") entfernt
+
+    # Ergebnisanzeige (Änderungen 2+3)
     st.subheader("Gefilterte Datensätze")
-    st.dataframe(df_gefiltert, use_container_width=True, height=600)
-    
+    st.dataframe(
+        df_gefiltert,
+        use_container_width=True,  # ✅ Änderung 3: Responsive
+        height=600
+    )
+
+    # Download als CSV
     st.download_button(
-        "📥 CSV herunterladen", 
-        data=download_csv(df_gefiltert), 
-        file_name="dnblab_datensets.csv", 
+        label="📥 Gefilterte Datensets als CSV herunterladen",  # ✅ Deutsch
+        data=download_csv(df_gefiltert),
+        file_name="dnblab_datensets_gefiltet.csv",
         mime="text/csv"
     )
 
