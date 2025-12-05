@@ -172,7 +172,7 @@ def main():
     col5, col6, col7 = st.columns([2, 3, 7])
 
     with col5:
-        st.markdown("**Volltext-Verfügbarkeit** [ℹ️](https://github.com/deutsche-nationalbibliothek/dnblab/blob/main/DownloadObjekte.pdf)", unsafe_allow_html=True)
+        st.markdown("**Volltext-Verfügbarkeit** [ℹ️](https://www.dnb.de/SharedDocs/Downloads/DE/Professionell/Services/downloadObjekte.pdf?__blob=publicationFile&v=3)", unsafe_allow_html=True)
         for val in volltext_werte:
             st.checkbox(val, key=f"volltext_{val}")
 
@@ -284,4 +284,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
