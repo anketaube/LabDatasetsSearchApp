@@ -128,4 +128,47 @@ def main():
     
     # Bezugsweg - EXAKTER Spaltenname (Änderung 4)
     bezugsweg_options = extract_unique_multiselect_options(df["Bezugsweg"])
-    selected_be
+    selected_bezugsweg = st.sidebar.multiselect(
+        "Bezugsweg", 
+        options=bezugsweg_options, 
+        default=[], 
+        placeholder="Wege wählen"
+    )
+    
+    # Filterlogik
+    df_gefiltert = df.copy()
+    
+    # Freitext
+    text_mask = robust_text_search(df_gefiltert, suchtext)
+    df_gefiltert = df_gefiltert[text_mask]
+    
+    # Zeitraum
+    df_gefiltert = filter_by_zeitraum(df_gefiltert, "Zeitraum der Daten", selected_zeitraeume)
+    
+    # Metadatenformat
+    if selected_metadatenformat:
+        mask_metadaten = df_gefiltert["Metadatenformat"].astype(str).apply(
+            lambda x: any(opt in [v.strip() for v in str(x).split(",")] for opt in selected_metadatenformat)
+        )
+        df_gefiltert = df_gefiltert[mask_metadaten]
+    
+    # Bezugsweg
+    if selected_bezugsweg:
+        mask_bezugsweg = df_gefiltert["Bezugsweg"].astype(str).apply(
+            lambda x: any(opt in [v.strip() for v in str(x).split(",")] for opt in selected_bezugsweg)
+        )
+        df_gefiltert = df_gefiltert[mask_bezugsweg]
+    
+    # Ergebnis (Änderungen 2+3)
+    st.subheader("Gefilterte Datensätze")
+    st.dataframe(df_gefiltert, use_container_width=True, height=600)
+    
+    st.download_button(
+        "📥 CSV herunterladen", 
+        data=download_csv(df_gefiltert), 
+        file_name="dnblab_datensets.csv", 
+        mime="text/csv"
+    )
+
+if __name__ == "__main__":
+    main()
