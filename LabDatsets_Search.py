@@ -115,7 +115,7 @@ def main():
         st.markdown(
             """
             <div style="display: flex; align-items: center; height: 80px;">
-                <img src="https://www.dnb.de/SiteGlobals/Frontend/DNBWeb/Images/logo.svg?__blob=normal&v=3" style="height: 75px; margin-right: 5px;">
+                <img src="https://portal.dnb.de/static/bilder/logo.gif" style="height: 75px; margin-right: 5px;">
             </div>
             """,
             unsafe_allow_html=True,
@@ -284,3 +284,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
