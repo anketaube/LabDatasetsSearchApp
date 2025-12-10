@@ -167,7 +167,7 @@ def main():
         st.multiselect("Metadatenformat", options=meta_werte, key="metadatenformat", placeholder="Option wählen...")  # Saubere Einzelwerte
 
     with col4:
-        st.multiselect("Bezugsweg", options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [], key="bezugsweg")
+        st.multiselect("Bezugsweg", options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [], key="bezugsweg", placeholder="Option wählen...")
 
     col5, col6, col7 = st.columns([2, 3, 7])
 
@@ -284,6 +284,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
