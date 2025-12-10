@@ -154,33 +154,52 @@ def main():
     meta_werte = extract_unique_multiselect_options(df[meta_col]) if meta_col else []
     zeitraum_options = get_zeitraum_options(df, zeitraum_col) if zeitraum_col else []
 
-   # Filterbereich
-    st.header("Suchfilter")
-    col1, col2, col3, col4 = st.columns(4)
+# Filterbereich
+st.header("Suchfilter")
 
-    with col1:
-        st.multiselect("Kategorie", options=kategorie_werte, key="kategorie", placeholder="Option wählen...")
+# Erste Spaltenreihe
+col1, col2, col3, col4 = st.columns(4)
 
-    with col2:
-        st.multiselect("Zeitraum der Daten", options=zeitraum_options, key="zeitraum", placeholder="Option wählen...")
+with col1:
+    st.multiselect("Kategorie", options=kategorie_werte, key="kategorie")
 
-    with col3:
-        st.multiselect("Metadatenformat", options=meta_werte, key="metadatenformat", placeholder="Option wählen...")  # Saubere Einzelwerte
+with col2:
+    st.multiselect("Zeitraum der Daten", options=zeitraum_options, key="zeitraum")
 
-    with col4:
-        
-       st.multiselect("Bezugsweg", options=bezugsweg_werte, key="bezugsweg", placeholder="Option wählen...")  # Saubere Einzelwerte)
-       
-    with col5:
-        st.markdown("**Volltext-Verfügbarkeit** [ℹ️](https://www.dnb.de/SharedDocs/Downloads/DE/Professionell/Services/downloadObjekte.pdf?__blob=publicationFile&v=4)", unsafe_allow_html=True)
-        for val in volltext_werte:
-            st.checkbox(val, key=f"volltext_{val}")
+with col3:
+    st.multiselect("Metadatenformat", options=meta_werte, key="metadatenformat")
 
-    with col6:
-        st.multiselect("Dateiformat der verlinkten Werke", options=dateiformat_werte, key="dateiformat", placeholder="Option wählen...")  # Saubere Einzelwerte
+with col4:
+    bezugsweg_werte = extract_unique_multiselect_options(df[bezugsweg_col]) if bezugsweg_col else []
+    st.multiselect("Bezugsweg", options=bezugsweg_werte, key="bezugsweg")
 
-    with col7:
-        st.text_input("Suche in allen Feldern", key="suchfeld", placeholder="Suche eingeben...")
+# Zweite Spaltenreihe – wichtig: diese Zeile MUSS vor jedem with col5/6/7 stehen
+col5, col6, col7 = st.columns([2, 3, 7])
+
+with col5:
+    st.markdown(
+        "**Volltext-Verfügbarkeit** "
+        "[ℹ️](chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/"
+        "https://www.dnb.de/SharedDocs/Downloads/DE/Professionell/Services/"
+        "downloadObjekte.pdf?__blob=publicationFile&v=4)",
+        unsafe_allow_html=True,
+    )
+    for val in volltext_werte:
+        st.checkbox(val, key=f"volltext_{val}")
+
+with col6:
+    st.multiselect(
+        "Dateiformat der verlinkten Werke",
+        options=dateiformat_werte,
+        key="dateiformat",
+    )
+
+with col7:
+    st.text_input(
+        "Suche in allen Feldern",
+        key="suchfeld",
+        placeholder="Suche eingeben...",
+    )
 
     # **KORRIGIERTE FILTERLOGIK MIT BOOL. MASKEN**
     filtered_df = df.copy()
@@ -284,6 +303,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
