@@ -153,21 +153,31 @@ def main():
     meta_werte = extract_unique_multiselect_options(df[meta_col]) if meta_col else []
     zeitraum_options = get_zeitraum_options(df, zeitraum_col) if zeitraum_col else []
 
-    # Filterbereich
+   # Filterbereich - mit CSS für "Option wählen..." in allen Multiselects
+st.markdown("""
+<style>
+div[role="combobox"] .css-1in6ngy > div > div > div:first-child::before {
+    content: "Option wählen...";
+    color: #888;
+    font-style: italic;
+}
+</style>
+""", unsafe_allow_html=True)
+
 st.header("Suchfilter")
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    st.multiselect("Kategorie", options=kategorie_werte, key="kategorie", placeholder="Option wählen...")
+    st.multiselect("Kategorie", options=kategorie_werte, key="kategorie")
 
 with col2:
-    st.multiselect("Zeitraum der Daten", options=zeitraum_options, key="zeitraum", placeholder="Option wählen...")
+    st.multiselect("Zeitraum der Daten", options=zeitraum_options, key="zeitraum")
 
 with col3:
-    st.multiselect("Metadatenformat", options=meta_werte, key="metadatenformat", placeholder="Option wählen...", format_func=lambda x: x)  # Saubere Einzelwerte
+    st.multiselect("Metadatenformat", options=meta_werte, key="metadatenformat")
 
 with col4:
-    st.multiselect("Bezugsweg", options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [], key="bezugsweg", placeholder="Option wählen...")
+    st.multiselect("Bezugsweg", options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [], key="bezugsweg")
 
 col5, col6, col7 = st.columns([2, 3, 7])
 
@@ -177,11 +187,10 @@ with col5:
         st.checkbox(val, key=f"volltext_{val}")
 
 with col6:
-    st.multiselect("Dateiformat der verlinkten Werke", options=dateiformat_werte, key="dateiformat", placeholder="Option wählen...")  # Saubere Einzelwerte
+    st.multiselect("Dateiformat der verlinkten Werke", options=dateiformat_werte, key="dateiformat")
 
 with col7:
     st.text_input("Suche in allen Feldern", key="suchfeld", placeholder="Suche eingeben...")
-
 
     # **KORRIGIERTE FILTERLOGIK MIT BOOL. MASKEN**
     filtered_df = df.copy()
@@ -285,6 +294,7 @@ with col7:
 
 if __name__ == "__main__":
     main()
+
 
 
 
