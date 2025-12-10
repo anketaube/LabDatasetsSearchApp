@@ -153,17 +153,7 @@ def main():
     meta_werte = extract_unique_multiselect_options(df[meta_col]) if meta_col else []
     zeitraum_options = get_zeitraum_options(df, zeitraum_col) if zeitraum_col else []
 
-   # Filterbereich - mit CSS für "Option wählen..." in allen Multiselects
-st.markdown("""
-<style>
-div[role="combobox"] .css-1in6ngy > div > div > div:first-child::before {
-    content: "Option wählen...";
-    color: #888;
-    font-style: italic;
-}
-</style>
-""", unsafe_allow_html=True)
-
+   # Filterbereich - OHNE CSS, nur Standard Streamlit
 st.header("Suchfilter")
 col1, col2, col3, col4 = st.columns(4)
 
@@ -294,6 +284,7 @@ with col7:
 
 if __name__ == "__main__":
     main()
+
 
 
 
