@@ -51,207 +51,238 @@ def clean_zeitraum_entry(entry):
 def get_zeitraum_options(df, zeitraum_col):
     """Erstellt saubere Auswahl: 1913- (ab) + exakte Zeiträume wie 1913-1918"""
     clean_zeitraeume = df[zeitraum_col].dropna().map(clean_zeitraum_entry).unique()
+    
     ab_jahre = set()
     exakte_zeitraeume = set()
-
+    
     for z in clean_zeitraeume:
         z_str = str(z).strip()
-        if z_str.endswith('-'):
+        if z_str.endswith('-'):  
             ab_jahre.add(z_str)
-        elif '-' in z_str and len(z_str.split('-')) == 2:
+        elif '-' in z_str and len(z_str.split('-')) == 2:  
             exakte_zeitraeume.add(z_str)
-
+    
     ab_options = sorted(list(ab_jahre), key=lambda x: int(x[:-1]))
     exakt_options = sorted(list(exakte_zeitraeume), key=lambda x: int(x.split('-')[0]))
+    
     return list(dict.fromkeys(ab_options + exakt_options))
 
 def filter_by_zeitraum(df, zeitraum_col, selected_options):
     """Filtert: '1913-' = alle ab 1913, '1913-1918' = exakt diesen Zeitraum"""
     if not selected_options:
         return df
-
+    
     df_clean = df.copy()
     df_clean[zeitraum_col] = df_clean[zeitraum_col].map(clean_zeitraum_entry)
-
+    
     mask = pd.Series([False] * len(df_clean))
-
+    
     for option in selected_options:
-        if option.endswith('-'):
+        if option.endswith('-'):  
             start_jahr = option[:-1]
             jahres_mask = df_clean[zeitraum_col].astype(str).apply(
                 lambda x: str(x).startswith(start_jahr)
             )
             mask = mask | jahres_mask
-        else:
+        else:  
             exact_mask = df_clean[zeitraum_col].astype(str) == option
             mask = mask | exact_mask
-
+    
     return df_clean[mask]
 
 def robust_text_search(df, suchtext):
     """Erweiterte Textsuche: case-insensitive, Teilstrings, alle Spalten"""
     if not suchtext or not suchtext.strip():
         return pd.Series([True] * len(df))
-
+    
     suchworte = [w.strip().lower() for w in suchtext.split() if w.strip()]
     mask = pd.Series([True] * len(df))
-
+    
     for wort in suchworte:
         wort_mask = df.astype(str).apply(
-            lambda row: row.str.lower().str.contains(wort, na=False, regex=False).any(),
+            lambda row: row.str.lower().str.contains(wort, na=False, regex=False).any(), 
             axis=1
         )
         mask = mask & wort_mask
-
+    
     return mask
 
 def main():
     st.set_page_config(layout="wide")
-
     cols = st.columns([1, 6])
+
     with cols[0]:
         st.markdown(
             """
-            <div style="display: flex; align-items: center;">
-                <h2 style="margin-right: 8px;">DNB Lab Datensets</h2>
-                <a href="chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/https://www.dnb.de/SharedDocs/Downloads/DE/Professionell/Services/downloadObjekte.pdf?__blob=publicationFile&v=4"
-                   target="_blank"
-                   style="text-decoration: none; color: inherit;">
-                    <span style="
-                        display: inline-flex;
-                        justify-content: center;
-                        align-items: center;
-                        width: 22px;
-                        height: 22px;
-                        border-radius: 50%;
-                        border: 1px solid #888;
-                        font-size: 14px;
-                        font-weight: bold;
-                        line-height: 22px;
-                        text-align: center;
-                        cursor: pointer;"
-                        title="Informationen zum Download von Objekten (öffnet in neuem Tab)">
-                        i
-                    </span>
-                </a>
+            <div style="display: flex; align-items: center; height: 80px;">
+                <img src="https://portal.dnb.de/static/bilder/logo.gif" style="height: 75px; margin-right: 5px;">
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
     with cols[1]:
-        st.write("")  # kleiner Abstand
-
-    st.markdown("Diese Anwendung ermöglicht die Filterung und Suche in DNB-Lab-Datensets.")
-
-    df = load_data()
-    if df is None:
-        return
-
-    # Spaltennamen anpassen, falls nötig
-    expected_columns = [
-        "Titel", "Beschreibung", "Typ", "Format", "Sprache",
-        "Lizenz", "Zeitraum", "Schlagwörter", "URL"
-    ]
-    for col in expected_columns:
-        if col not in df.columns:
-            pass
-
-    st.sidebar.header("Filter")
-
-    text_filter = st.sidebar.text_input(
-        "Volltextsuche in allen Feldern",
-        placeholder="Suchbegriff(e) eingeben …"
-    )
-
-    typ_options = extract_unique_multiselect_options(df["Typ"])
-    selected_typ = st.sidebar.multiselect(
-        "Datensatztyp",
-        options=typ_options,
-        default=[]
-    )
-
-    format_options = extract_unique_multiselect_options(df["Format"])
-    selected_format = st.sidebar.multiselect(
-        "Format",
-        options=format_options,
-        default=[]
-    )
-
-    sprache_options = extract_unique_multiselect_options(df["Sprache"])
-    selected_sprache = st.sidebar.multiselect(
-        "Sprache",
-        options=sprache_options,
-        default=[]
-    )
-
-    lizenz_options = extract_unique_multiselect_options(df["Lizenz"])
-    selected_lizenz = st.sidebar.multiselect(
-        "Lizenz",
-        options=lizenz_options,
-        default=[]
-    )
-
-    if "Zeitraum" in df.columns:
-        zeitraum_options = get_zeitraum_options(df, "Zeitraum")
-        selected_zeitraum = st.sidebar.multiselect(
-            "Zeitraum",
-            options=zeitraum_options,
-            default=[]
+        st.markdown(
+            """
+            <h1 style="margin: 0; line-height: 80px;">DNBLab Datensetsuche</h1>
+            """,
+            unsafe_allow_html=True,
         )
-    else:
-        selected_zeitraum = []
 
+    # Daten laden
+    if "original_df" not in st.session_state:
+        df = load_data()
+        if df is None:
+            st.stop()
+        st.session_state.original_df = df
+    else:
+        df = st.session_state.original_df
+
+    # Spalten identifizieren
+    kategorie_spalten = [col for col in df.columns if col.lower().startswith("kategorie")]
+    zeitraum_col = next((col for col in df.columns if "zeitraum" in col.lower()), None)
+    meta_col = next((col for col in df.columns if "metadatenformat" in col.lower()), None)
+    bezugsweg_col = next((col for col in df.columns if "bezugsweg" in col.lower()), None)
+    volltext_spalte = next((col for col in df.columns if "volltext" in col.lower()), None)
+    dateiformat_spalte = next((col for col in df.columns if "dateiformat" in col.lower()), None)
+
+    # Filteroptionen vorbereiten
+    kategorie_werte = sorted(set([str(x) for x in df[kategorie_spalten].stack().dropna() if str(x).strip() != ""]))
+    volltext_werte = extract_unique_multiselect_options(df[volltext_spalte]) if volltext_spalte else []
+    dateiformat_werte = extract_unique_multiselect_options(df[dateiformat_spalte]) if dateiformat_spalte else []
+    meta_werte = extract_unique_multiselect_options(df[meta_col]) if meta_col else []
+    zeitraum_options = get_zeitraum_options(df, zeitraum_col) if zeitraum_col else []
+
+    # Filterbereich
+    st.header("Suchfilter")
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.multiselect("Kategorie", options=kategorie_werte, key="kategorie")
+
+    with col2:
+        st.multiselect("Zeitraum der Daten", options=zeitraum_options, key="zeitraum")
+
+    with col3:
+        st.multiselect("Metadatenformat", options=meta_werte, key="metadatenformat")  # Saubere Einzelwerte
+
+    with col4:
+        st.multiselect("Bezugsweg", options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [], key="bezugsweg")
+
+    col5, col6, col7 = st.columns([2, 3, 7])
+
+    with col5:
+        st.markdown("**Volltext-Verfügbarkeit** [ℹ️](https://www.dnb.de/SharedDocs/Downloads/DE/Professionell/Services/downloadObjekte.pdf?__blob=publicationFile&v=3)", unsafe_allow_html=True)
+        for val in volltext_werte:
+            st.checkbox(val, key=f"volltext_{val}")
+
+    with col6:
+        st.multiselect("Dateiformat der verlinkten Werke", options=dateiformat_werte, key="dateiformat")  # Saubere Einzelwerte
+
+    with col7:
+        st.text_input("Suche in allen Feldern", key="suchfeld", placeholder="Suche eingeben...")
+
+    # **KORRIGIERTE FILTERLOGIK MIT BOOL. MASKEN**
     filtered_df = df.copy()
 
-    text_mask = robust_text_search(filtered_df, text_filter)
-    filtered_df = filtered_df[text_mask]
+    # 1. Kategorie-Maske
+    selected_kat = st.session_state.get("kategorie", [])
+    mask_kategorie = (filtered_df[kategorie_spalten].astype(str).isin(selected_kat).any(axis=1) 
+                     if selected_kat else pd.Series([True]*len(filtered_df)))
 
-    if selected_typ:
-        filtered_df = filtered_df[
-            filtered_df["Typ"].astype(str).apply(
-                lambda x: any(t in [v.strip() for v in x.split(",")] for t in selected_typ)
-            )
-        ]
-
-    if selected_format:
-        filtered_df = filtered_df[
-            filtered_df["Format"].astype(str).apply(
-                lambda x: any(f in [v.strip() for v in x.split(",")] for f in selected_format)
-            )
-        ]
-
-    if selected_sprache:
-        filtered_df = filtered_df[
-            filtered_df["Sprache"].astype(str).apply(
-                lambda x: any(s in [v.strip() for v in x.split(",")] for s in selected_sprache)
-            )
-        ]
-
-    if selected_lizenz:
-        filtered_df = filtered_df[
-            filtered_df["Lizenz"].astype(str).apply(
-                lambda x: any(l in [v.strip() for v in x.split(",")] for l in selected_lizenz)
-            )
-        ]
-
-    if selected_zeitraum and "Zeitraum" in filtered_df.columns:
-        filtered_df = filter_by_zeitraum(filtered_df, "Zeitraum", selected_zeitraum)
-
-    st.markdown(f"**Gefundene Datensätze:** {len(filtered_df)}")
-
-    if not filtered_df.empty:
-        st.dataframe(filtered_df, use_container_width=True)
-
-        csv_buffer = download_csv(filtered_df)
-        st.download_button(
-            label="Gefilterte Datensätze als CSV herunterladen",
-            data=csv_buffer,
-            file_name="dnb_lab_datensets_gefiltet.csv",
-            mime="text/csv"
-        )
+    # 2. Zeitraum-Maske
+    selected_zeitraum = st.session_state.get("zeitraum", [])
+    if selected_zeitraum and zeitraum_col:
+        zeit_df = filter_by_zeitraum(filtered_df, zeitraum_col, selected_zeitraum)
+        mask_zeitraum = filtered_df.index.isin(zeit_df.index)
     else:
-        st.info("Keine Datensätze für die aktuelle Filterkombination gefunden.")
+        mask_zeitraum = pd.Series([True]*len(filtered_df))
+
+    # 3. **METADATENFORMAT: OR innerhalb der Zelle (flac, MP3 → flac ODER MP3)**
+    selected_meta = st.session_state.get("metadatenformat", [])
+    if selected_meta and meta_col:
+        def meta_match(cell):
+            cell_values = [v.strip().lower() for v in str(cell).split(",")]
+            return any(sel.strip().lower() in cell_values for sel in selected_meta)
+        mask_metadatenformat = filtered_df[meta_col].apply(meta_match)
+    else:
+        mask_metadatenformat = pd.Series([True]*len(filtered_df))
+
+    # 4. Bezugsweg-Maske
+    selected_bezugsweg = st.session_state.get("bezugsweg", [])
+    mask_bezugsweg = (filtered_df[bezugsweg_col].astype(str).isin(selected_bezugsweg) 
+                     if selected_bezugsweg and bezugsweg_col else pd.Series([True]*len(filtered_df)))
+
+    # 5. Volltext-Maske (ALL - UND innerhalb der Auswahl)
+    selected_volltext = [v for v in volltext_werte if st.session_state.get(f"volltext_{v}")]
+    if selected_volltext and volltext_spalte:
+        def volltext_match(cell):
+            return all(v.strip() in str(cell).split(",") for v in selected_volltext)
+        mask_volltext = filtered_df[volltext_spalte].apply(volltext_match)
+    else:
+        mask_volltext = pd.Series([True]*len(filtered_df))
+
+    # 6. **DATEIFORMAT: OR innerhalb der Zelle (flac, MP3 → flac ODER MP3)**
+    selected_dateiformat = st.session_state.get("dateiformat", [])
+    if selected_dateiformat and dateiformat_spalte:
+        def dateiformat_match(cell):
+            cell_values = [v.strip().lower() for v in str(cell).split(",")]
+            return any(sel.strip().lower() in cell_values for sel in selected_dateiformat)
+        mask_dateiformat = filtered_df[dateiformat_spalte].apply(dateiformat_match)
+    else:
+        mask_dateiformat = pd.Series([True]*len(filtered_df))
+
+    # 7. TEXTSUCHE
+    suchtext = st.session_state.get("suchfeld", "").strip()
+    mask_suche = robust_text_search(filtered_df, suchtext)
+
+    # **ALLE FILTER MIT UND KOMBINIEREN**
+    final_mask = (mask_kategorie & mask_zeitraum & mask_metadatenformat & 
+                  mask_bezugsweg & mask_volltext & mask_dateiformat & mask_suche)
+    
+    filtered_df = df[final_mask].copy()
+
+    # KATEGORIE-SPALTEN AUS ANZEIGE ENTFERNEN
+    display_df = filtered_df.drop(columns=kategorie_spalten, errors='ignore')
+
+    st.header("Suchergebnisse")
+    st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
+    
+    # DEBUG-INFO für Exil-Suche
+    if suchtext.lower() == "exil":
+        st.info(f"🔍 **Exil-Suche Debug:** {len(df[robust_text_search(df, 'exil')])} Treffer in Originaldaten")
+    
+    # DATAFRAME MIT BLAUEN URL-LINKS
+    url_spalte = next((col for col in display_df.columns if col.lower() == 'url'), None)
+    
+    column_config = {
+        **{col: st.column_config.Column(width="medium") for col in display_df.columns if col != url_spalte},
+    }
+    
+    if url_spalte:
+        column_config[url_spalte] = st.column_config.LinkColumn(
+            "URL",
+            width="large",
+            help="Auf Datensatz-Seite gehen"
+        )
+
+    st.dataframe(
+        display_df, 
+        use_container_width=True, 
+        height=600,
+        column_config=column_config,
+        hide_index=True
+    )
+
+    csv_file = download_csv(filtered_df)
+    st.download_button(
+        label="Ergebnisse als CSV herunterladen",
+        data=csv_file,
+        file_name="dnb_datensets.csv",
+        mime="text/csv",
+    )
 
 if __name__ == "__main__":
     main()
+
+
