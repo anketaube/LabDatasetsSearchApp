@@ -150,34 +150,34 @@ def main():
     kategorie_werte = sorted(set([str(x) for x in df[kategorie_spalten].stack().dropna() if str(x).strip() != ""]))
     volltext_werte = extract_unique_multiselect_options(df[volltext_spalte]) if volltext_spalte else []
     dateiformat_werte = extract_unique_multiselect_options(df[dateiformat_spalte]) if dateiformat_spalte else []
-    bezugsweg_werte = extract_unique_multiselect_options(df[bezugsweg_col]) if bezugsweg_col else []
     meta_werte = extract_unique_multiselect_options(df[meta_col]) if meta_col else []
     zeitraum_options = get_zeitraum_options(df, zeitraum_col) if zeitraum_col else []
 
-   # Filterbereich
+    # Filterbereich
     st.header("Suchfilter")
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.multiselect("Kategorie", options=kategorie_werte, key="kategorie", placeholder="Option wählen...")
+        st.multiselect("Kategorie", options=kategorie_werte, key="kategorie")
 
     with col2:
-        st.multiselect("Zeitraum der Daten", options=zeitraum_options, key="zeitraum", placeholder="Option wählen...")
+        st.multiselect("Zeitraum der Daten", options=zeitraum_options, key="zeitraum")
 
     with col3:
-        st.multiselect("Metadatenformat", options=meta_werte, key="metadatenformat", placeholder="Option wählen...")  # Saubere Einzelwerte
+        st.multiselect("Metadatenformat", options=meta_werte, key="metadatenformat")  # Saubere Einzelwerte
 
     with col4:
-        
-       st.multiselect("Bezugsweg", options=bezugsweg_werte, key="bezugsweg", placeholder="Option wählen...")  # Saubere Einzelwerte)
-       
+        st.multiselect("Bezugsweg", options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [], key="bezugsweg")
+
+    col5, col6, col7 = st.columns([2, 3, 7])
+
     with col5:
-        st.markdown("**Volltext-Verfügbarkeit** [ℹ️](https://www.dnb.de/SharedDocs/Downloads/DE/Professionell/Services/downloadObjekte.pdf?__blob=publicationFile&v=4)", unsafe_allow_html=True)
+        st.markdown("**Volltext-Verfügbarkeit** [ℹ️](chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/https://www.dnb.de/SharedDocs/Downloads/DE/Professionell/Services/downloadObjekte.pdf?__blob=publicationFile&v=4)", unsafe_allow_html=True)
         for val in volltext_werte:
             st.checkbox(val, key=f"volltext_{val}")
 
     with col6:
-        st.multiselect("Dateiformat der verlinkten Werke", options=dateiformat_werte, key="dateiformat", placeholder="Option wählen...")  # Saubere Einzelwerte
+        st.multiselect("Dateiformat der verlinkten Werke", options=dateiformat_werte, key="dateiformat")  # Saubere Einzelwerte
 
     with col7:
         st.text_input("Suche in allen Feldern", key="suchfeld", placeholder="Suche eingeben...")
@@ -284,14 +284,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
 
 
