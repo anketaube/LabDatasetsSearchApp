@@ -154,10 +154,19 @@ def main():
     meta_werte = extract_unique_multiselect_options(df[meta_col]) if meta_col else []
     zeitraum_options = get_zeitraum_options(df, zeitraum_col) if zeitraum_col else []
 
-# Filterbereich
-st.header("Suchfilter")
+# DEFINIERE ALLE Optionen VARIABLEN ZUERST (vor den Columns!)
 
-# Erste Spaltenreihe
+
+kategorie_werte = extract_unique_multiselect_options(df["Kategorie"]) if "Kategorie" in df.columns else []
+meta_werte = extract_unique_multiselect_options(df["Metadatenformat"]) if "Metadatenformat" in df.columns else []
+bezugsweg_col = "Bezugsweg" if "Bezugsweg" in df.columns else None
+bezugsweg_werte = extract_unique_multiselect_options(df[bezugsweg_col]) if bezugsweg_col else []
+dateiformat_werte = extract_unique_multiselect_options(df["Dateiformat"]) if "Dateiformat" in df.columns else []
+volltext_werte = df["Volltext"].dropna().unique() if "Volltext" in df.columns else []
+zeitraum_options = get_zeitraum_options(df, "Zeitraum") if "Zeitraum" in df.columns else []
+
+# JETZT Filterbereich:
+st.header("Suchfilter")
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
@@ -303,6 +312,7 @@ with col7:
 
 if __name__ == "__main__":
     main()
+
 
 
 
