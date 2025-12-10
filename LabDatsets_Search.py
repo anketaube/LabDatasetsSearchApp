@@ -158,7 +158,7 @@ def main():
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.multiselect("Kategorie", options=kategorie_werte, key="kategorie")
+        st.multiselect("Kategorie", options=kategorie_werte, key="kategorie" placeholder="Kategorie wählen...")
 
     with col2:
         st.multiselect("Zeitraum der Daten", options=zeitraum_options, key="zeitraum")
@@ -284,6 +284,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
