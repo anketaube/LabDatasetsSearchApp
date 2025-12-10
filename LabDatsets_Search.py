@@ -158,13 +158,13 @@ def main():
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.multiselect("Kategorie", options=kategorie_werte, key="kategorie", placeholder="Kategorie wählen...")
+        st.multiselect("Kategorie", options=kategorie_werte, key="kategorie", placeholder="Option wählen...")
 
     with col2:
-        st.multiselect("Zeitraum der Daten", options=zeitraum_options, key="zeitraum")
+        st.multiselect("Zeitraum der Daten", options=zeitraum_options, key="zeitraum", placeholder="Option wählen...")
 
     with col3:
-        st.multiselect("Metadatenformat", options=meta_werte, key="metadatenformat")  # Saubere Einzelwerte
+        st.multiselect("Metadatenformat", options=meta_werte, key="metadatenformat", placeholder="Option wählen...")  # Saubere Einzelwerte
 
     with col4:
         st.multiselect("Bezugsweg", options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [], key="bezugsweg")
@@ -177,7 +177,7 @@ def main():
             st.checkbox(val, key=f"volltext_{val}")
 
     with col6:
-        st.multiselect("Dateiformat der verlinkten Werke", options=dateiformat_werte, key="dateiformat")  # Saubere Einzelwerte
+        st.multiselect("Dateiformat der verlinkten Werke", options=dateiformat_werte, key="dateiformat", placeholder="Option wählen...")  # Saubere Einzelwerte
 
     with col7:
         st.text_input("Suche in allen Feldern", key="suchfeld", placeholder="Suche eingeben...")
@@ -284,6 +284,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
