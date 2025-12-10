@@ -105,6 +105,14 @@ def robust_text_search(df, suchtext):
 
     return mask
 
+def safe_column_access(df, col_name):
+    """Sichere Spaltenzugriffe mit Fehlerbehandlung"""
+    if col_name in df.columns:
+        return df[col_name]
+    else:
+        st.warning(f"Spalte '{col_name}' nicht gefunden. Verfügbare Spalten: {list(df.columns)}")
+        return pd.Series(dtype=object)
+
 def main():
     st.set_page_config(layout="wide")
     
@@ -161,20 +169,11 @@ def main():
     with cols[1]:
         st.write("")  # kleiner Abstand
 
-    st.markdown("Diese Anwendung ermöglicht die Filterung und Suche in DNBLab Datensets.")
+    st.markdown("Diese Anwendung ermöglicht die Filterung und Suche in DNB-Lab-Datensets.")
 
     df = load_data()
     if df is None:
         return
-
-    # Spaltennamen anpassen, falls nötig
-    expected_columns = [
-        "Titel", "Beschreibung", "Typ", "Format", "Sprache",
-        "Lizenz", "Zeitraum", "Schlagwörter", "URL"
-    ]
-    for col in expected_columns:
-        if col not in df.columns:
-            pass
 
     st.sidebar.header("Filter")
 
@@ -183,28 +182,33 @@ def main():
         placeholder="Suchbegriff(e) eingeben …"
     )
 
-    typ_options = extract_unique_multiselect_options(df["Typ"])
+    # Sichere Spaltenzugriffe
+    typ_col = safe_column_access(df, "Typ")
+    typ_options = extract_unique_multiselect_options(typ_col)
     selected_typ = st.sidebar.multiselect(
         "Datensatztyp",
         options=typ_options,
         default=[]
     )
 
-    format_options = extract_unique_multiselect_options(df["Format"])
+    format_col = safe_column_access(df, "Format")
+    format_options = extract_unique_multiselect_options(format_col)
     selected_format = st.sidebar.multiselect(
         "Format",
         options=format_options,
         default=[]
     )
 
-    sprache_options = extract_unique_multiselect_options(df["Sprache"])
+    sprache_col = safe_column_access(df, "Sprache")
+    sprache_options = extract_unique_multiselect_options(sprache_col)
     selected_sprache = st.sidebar.multiselect(
         "Sprache",
         options=sprache_options,
         default=[]
     )
 
-    lizenz_options = extract_unique_multiselect_options(df["Lizenz"])
+    lizenz_col = safe_column_access(df, "Lizenz")
+    lizenz_options = extract_unique_multiselect_options(lizenz_col)
     selected_lizenz = st.sidebar.multiselect(
         "Lizenz",
         options=lizenz_options,
@@ -226,31 +230,31 @@ def main():
     text_mask = robust_text_search(filtered_df, text_filter)
     filtered_df = filtered_df[text_mask]
 
-    if selected_typ:
+    if selected_typ and not typ_col.empty:
         filtered_df = filtered_df[
             filtered_df["Typ"].astype(str).apply(
-                lambda x: any(t in [v.strip() for v in x.split(",")] for t in selected_typ)
+                lambda x: any(t in [v.strip() for v in str(x).split(",")] for t in selected_typ)
             )
         ]
 
-    if selected_format:
+    if selected_format and not format_col.empty:
         filtered_df = filtered_df[
             filtered_df["Format"].astype(str).apply(
-                lambda x: any(f in [v.strip() for v in x.split(",")] for f in selected_format)
+                lambda x: any(f in [v.strip() for v in str(x).split(",")] for f in selected_format)
             )
         ]
 
-    if selected_sprache:
+    if selected_sprache and not sprache_col.empty:
         filtered_df = filtered_df[
             filtered_df["Sprache"].astype(str).apply(
-                lambda x: any(s in [v.strip() for v in x.split(",")] for s in selected_sprache)
+                lambda x: any(s in [v.strip() for v in str(x).split(",")] for s in selected_sprache)
             )
         ]
 
-    if selected_lizenz:
+    if selected_lizenz and not lizenz_col.empty:
         filtered_df = filtered_df[
             filtered_df["Lizenz"].astype(str).apply(
-                lambda x: any(l in [v.strip() for v in x.split(",")] for l in selected_lizenz)
+                lambda x: any(l in [v.strip() for v in str(x).split(",")] for l in selected_lizenz)
             )
         ]
 
