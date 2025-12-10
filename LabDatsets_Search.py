@@ -151,6 +151,7 @@ def main():
     volltext_werte = extract_unique_multiselect_options(df[volltext_spalte]) if volltext_spalte else []
     dateiformat_werte = extract_unique_multiselect_options(df[dateiformat_spalte]) if dateiformat_spalte else []
     meta_werte = extract_unique_multiselect_options(df[meta_col]) if meta_col else []
+    bezugsweg_werte = extract_unique_multiselect_options(df[bezugsweg_col]) if bezugsweg_col else []
     zeitraum_options = get_zeitraum_options(df, zeitraum_col) if zeitraum_col else []
 
     # Filterbereich
@@ -164,20 +165,23 @@ def main():
         st.multiselect("Zeitraum der Daten", options=zeitraum_options, key="zeitraum", placeholder="Option wählen...")
 
     with col3:
-        st.multiselect("Metadatenformat", options=meta_werte, key="metadatenformat", placeholder="Option wählen...")  # Saubere Einzelwerte
+        st.multiselect("Metadatenformat", options=meta_werte, key="metadatenformat", placeholder="Option wählen...")
 
     with col4:
-        st.multiselect("Bezugsweg", options=sorted(df[bezugsweg_col].dropna().unique()) if bezugsweg_col else [], key="bezugsweg", placeholder="Option wählen...")
+        st.multiselect("Bezugsweg", options=bezugsweg_werte, key="bezugsweg", placeholder="Option wählen...")
 
     col5, col6, col7 = st.columns([2, 3, 7])
 
     with col5:
-        st.markdown("**Volltext-Verfügbarkeit** [ℹ️](chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/https://www.dnb.de/SharedDocs/Downloads/DE/Professionell/Services/downloadObjekte.pdf?__blob=publicationFile&v=4)", unsafe_allow_html=True)
+        st.markdown(
+            "**Volltext-Verfügbarkeit** [ℹ️](chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/https://www.dnb.de/SharedDocs/Downloads/DE/Professionell/Services/downloadObjekte.pdf?__blob=publicationFile&v=4)",
+            unsafe_allow_html=True
+        )
         for val in volltext_werte:
             st.checkbox(val, key=f"volltext_{val}")
 
     with col6:
-        st.multiselect("Dateiformat der verlinkten Werke", options=dateiformat_werte, key="dateiformat", placeholder="Option wählen...")  # Saubere Einzelwerte
+        st.multiselect("Dateiformat der verlinkten Werke", options=dateiformat_werte, key="dateiformat", placeholder="Option wählen...")
 
     with col7:
         st.text_input("Suche in allen Feldern", key="suchfeld", placeholder="Suche eingeben...")
@@ -185,12 +189,12 @@ def main():
     # **KORRIGIERTE FILTERLOGIK MIT BOOL. MASKEN**
     filtered_df = df.copy()
 
-    # 1. Kategorie-Maske
+    # 1. Kategorie
     selected_kat = st.session_state.get("kategorie", [])
-    mask_kategorie = (filtered_df[kategorie_spalten].astype(str).isin(selected_kat).any(axis=1) 
+    mask_kategorie = (filtered_df[kategorie_spalten].astype(str).isin(selected_kat).any(axis=1)
                      if selected_kat else pd.Series([True]*len(filtered_df)))
 
-    # 2. Zeitraum-Maske
+    # 2. Zeitraum
     selected_zeitraum = st.session_state.get("zeitraum", [])
     if selected_zeitraum and zeitraum_col:
         zeit_df = filter_by_zeitraum(filtered_df, zeitraum_col, selected_zeitraum)
@@ -198,7 +202,7 @@ def main():
     else:
         mask_zeitraum = pd.Series([True]*len(filtered_df))
 
-    # 3. **METADATENFORMAT: OR innerhalb der Zelle (flac, MP3 → flac ODER MP3)**
+    # 3. Metadatenformat
     selected_meta = st.session_state.get("metadatenformat", [])
     if selected_meta and meta_col:
         def meta_match(cell):
@@ -208,12 +212,17 @@ def main():
     else:
         mask_metadatenformat = pd.Series([True]*len(filtered_df))
 
-    # 4. Bezugsweg-Maske
+    # 4. Bezugsweg (jetzt genauso wie Metadatenformat!)
     selected_bezugsweg = st.session_state.get("bezugsweg", [])
-    mask_bezugsweg = (filtered_df[bezugsweg_col].astype(str).isin(selected_bezugsweg) 
-                     if selected_bezugsweg and bezugsweg_col else pd.Series([True]*len(filtered_df)))
+    if selected_bezugsweg and bezugsweg_col:
+        def bezugsweg_match(cell):
+            cell_values = [v.strip().lower() for v in str(cell).split(",")]
+            return any(sel.strip().lower() in cell_values for sel in selected_bezugsweg)
+        mask_bezugsweg = filtered_df[bezugsweg_col].apply(bezugsweg_match)
+    else:
+        mask_bezugsweg = pd.Series([True]*len(filtered_df))
 
-    # 5. Volltext-Maske (ALL - UND innerhalb der Auswahl)
+    # 5. Volltext
     selected_volltext = [v for v in volltext_werte if st.session_state.get(f"volltext_{v}")]
     if selected_volltext and volltext_spalte:
         def volltext_match(cell):
@@ -222,7 +231,7 @@ def main():
     else:
         mask_volltext = pd.Series([True]*len(filtered_df))
 
-    # 6. **DATEIFORMAT: OR innerhalb der Zelle (flac, MP3 → flac ODER MP3)**
+    # 6. Dateiformat
     selected_dateiformat = st.session_state.get("dateiformat", [])
     if selected_dateiformat and dateiformat_spalte:
         def dateiformat_match(cell):
@@ -232,33 +241,31 @@ def main():
     else:
         mask_dateiformat = pd.Series([True]*len(filtered_df))
 
-    # 7. TEXTSUCHE
+    # 7. Textsuche
     suchtext = st.session_state.get("suchfeld", "").strip()
     mask_suche = robust_text_search(filtered_df, suchtext)
 
-    # **ALLE FILTER MIT UND KOMBINIEREN**
-    final_mask = (mask_kategorie & mask_zeitraum & mask_metadatenformat & 
+    # Filter kombinieren
+    final_mask = (mask_kategorie & mask_zeitraum & mask_metadatenformat &
                   mask_bezugsweg & mask_volltext & mask_dateiformat & mask_suche)
     
     filtered_df = df[final_mask].copy()
 
-    # KATEGORIE-SPALTEN AUS ANZEIGE ENTFERNEN
+    # Anzeige
     display_df = filtered_df.drop(columns=kategorie_spalten, errors='ignore')
 
     st.header("Suchergebnisse")
     st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
-    
-    # DEBUG-INFO für Exil-Suche
+
     if suchtext.lower() == "exil":
         st.info(f"🔍 **Exil-Suche Debug:** {len(df[robust_text_search(df, 'exil')])} Treffer in Originaldaten")
-    
-    # DATAFRAME MIT BLAUEN URL-LINKS
+
     url_spalte = next((col for col in display_df.columns if col.lower() == 'url'), None)
     
     column_config = {
         **{col: st.column_config.Column(width="medium") for col in display_df.columns if col != url_spalte},
     }
-    
+
     if url_spalte:
         column_config[url_spalte] = st.column_config.LinkColumn(
             "URL",
@@ -267,8 +274,8 @@ def main():
         )
 
     st.dataframe(
-        display_df, 
-        use_container_width=True, 
+        display_df,
+        use_container_width=True,
         height=600,
         column_config=column_config,
         hide_index=True
@@ -284,6 +291,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
