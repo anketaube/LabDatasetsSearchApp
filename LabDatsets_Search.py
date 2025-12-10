@@ -174,7 +174,7 @@ def main():
 
     with col5:
         st.markdown(
-            "**Volltext-Verfügbarkeit** [ℹ️](chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/https://www.dnb.de/SharedDocs/Downloads/DE/Professionell/Services/downloadObjekte.pdf?__blob=publicationFile&v=4)",
+            "**Volltext-Verfügbarkeit** [ℹ️](https://www.dnb.de/SharedDocs/Downloads/DE/Professionell/Services/downloadObjekte.pdf?__blob=publicationFile&v=4)",
             unsafe_allow_html=True
         )
         for val in volltext_werte:
@@ -291,3 +291,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
