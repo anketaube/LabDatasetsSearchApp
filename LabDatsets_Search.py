@@ -257,8 +257,8 @@ def main():
     st.header("Suchergebnisse")
     st.write(f"Anzahl Ergebnisse: {len(filtered_df)}")
 
-    if suchtext.lower() == "exil":
-        st.info(f"🔍 **Exil-Suche Debug:** {len(df[robust_text_search(df, 'exil')])} Treffer in Originaldaten")
+    #if suchtext.lower() == "exil":
+       # st.info(f"🔍 **Exil-Suche Debug:** {len(df[robust_text_search(df, 'exil')])} Treffer in Originaldaten")
 
     url_spalte = next((col for col in display_df.columns if col.lower() == 'url'), None)
     
@@ -291,4 +291,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
