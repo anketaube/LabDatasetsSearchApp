@@ -24,8 +24,8 @@ def load_data():
         st.info("Stellen Sie sicher, dass die Datei eine gültige Excel-Datei ist und das Format .xlsx hat.")
         return None
 
-def download_csv(df):
-    csv = df.to_csv(index=False, encoding='utf-8')
+def downloadcsv(df):
+    csv = df.to_csv(sep=';', index=False, encoding='utf-8')
     b = io.BytesIO()
     b.write(csv.encode('utf-8'))
     return b
@@ -291,5 +291,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
