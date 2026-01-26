@@ -25,10 +25,26 @@ def load_data():
         return None
 
 def download_csv(df):
-    """Optimiert für Excel (Deutschland): Semikolon-Trennzeichen, UTF-8 mit BOM"""
-    csv = df.to_csv(sep=';', index=False, encoding='utf-8-sig')
+    """CSV 100% Excel-kompatibel: Semikolon + UTF-8-BOM + Sonderzeichen bereinigt"""
+    # 1. ALLE problematischen Zeichen bereinigen
+    df_clean = df.copy()
+    for col in df_clean.columns:
+        df_clean[col] = df_clean[col].astype(str).str.replace('\u00A0', ' ', regex=False)
+        df_clean[col] = df_clean[col].str.replace('\u2009', ' ', regex=False)
+        df_clean[col] = df_clean[col].str.replace('\u202F', ' ', regex=False)
+        # Normalisieren + ASCII-only für Excel-Kompatibilität
+        df_clean[col] = df_clean[col].str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('ascii')
+    
+    # 2. Excel-DE Format
+    csv = df_clean.to_csv(
+        sep=';', 
+        index=False, 
+        encoding='utf-8-sig',
+        na_rep=''
+    )
+    
     b = io.BytesIO()
-    b.write(csv.encode('utf-8'))
+    b.write(csv.encode('utf-8-sig'))
     b.seek(0)
     return b.getvalue()
 
@@ -41,21 +57,23 @@ def extract_unique_multiselect_options(series):
     return sorted(unique_values)
 
 def clean_zeitraum_entry(entry):
-    """Bereinigt Zeiträume, entfernt alle Whitespaces um -, Non-breaking spaces, etc."""
+    """Bereinigt Zeiträume aggressiv für saubere Anzeige"""
     if pd.isna(entry):
         return entry
     s = str(entry)
-    s = s.replace('\u00A0', ' ').replace('\u2009', ' ').replace(',', '')
-    s = re.sub(r'-', '-', s)
-    s = re.sub(r'\s+', ' ', s).strip()
-    return s
+    s = s.replace('\u00A0', ' ').replace('\u2009', ' ').replace('\u202F', ' ')
+    s = re.sub(r'[^\d\s\-\–—]', '', s)
+    s = re.sub(r'\s+', ' ', s)
+    s = re.sub(r'[-–—]\s*', '-', s)
+    s = s.strip()
+    return s if s else pd.NA
 
 def get_zeitraum_options(df, zeitraum_col):
     """Erstellt saubere Auswahl: 1913- (ab), exakte Zeiträume wie 1913-1918"""
     if not zeitraum_col:
         return []
     
-    clean_zeitraeume = df[zeitraum_col].dropna().map(clean_zeitraum_entry).unique()
+    clean_zeitraeume = df[zeitraum_col].dropna().map(clean_zeitraum_entry).astype(str).unique()
     ab_jahre = set()
     exakte_zeitraeume = set()
     
@@ -157,7 +175,7 @@ def main():
     
     col5, col6, col7 = st.columns([2, 3, 7])
     with col5:
-        st.markdown("**Volltext-Verfügbarkeit**", unsafe_allow_html=True)
+        st.markdown("**Volltext-Verfügbarkeit**")
         for val in volltext_werte:
             st.checkbox(val, key=f'volltext_{val}')
     with col6:
@@ -165,7 +183,7 @@ def main():
     with col7:
         st.text_input("Suche in allen Feldern", key='suchfeld', placeholder="Suche eingeben...")
     
-    # Filter anwenden
+    # Filter anwenden (sequentiell)
     filtered_df = df.copy()
     
     # 1. Kategorie
@@ -178,8 +196,7 @@ def main():
     selected_zeitraum = st.session_state.get('zeitraum', [])
     if selected_zeitraum and zeitraum_col:
         zeit_df = filter_by_zeitraum(filtered_df, zeitraum_col, selected_zeitraum)
-        mask_zeitraum = filtered_df.index.isin(zeit_df.index)
-        filtered_df = filtered_df[mask_zeitraum]
+        filtered_df = filtered_df[filtered_df.index.isin(zeit_df.index)]
     
     # 3. Metadatenformat
     selected_meta = st.session_state.get('metadatenformat', [])
@@ -244,7 +261,7 @@ def main():
         hide_index=True
     )
     
-    # CSV-Download (immer verfügbar, Streamlit-Rerun-sicher)
+    # CSV-Download (Excel-optimiert, immer verfügbar)
     csv_file = download_csv(filtered_df)
     st.download_button(
         label="📥 Ergebnisse als CSV herunterladen (Excel-optimiert)",
@@ -252,8 +269,6 @@ def main():
         file_name="dnb_datensets.csv",
         mime="text/csv"
     )
-    
-    st.info(f"💡 Exil-Suche Debug: {len(robust_text_search(df, 'exil'))} Treffer in Originaldaten")
 
 if __name__ == "__main__":
     main()
