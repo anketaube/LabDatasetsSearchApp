@@ -5,7 +5,7 @@ from io import BytesIO
 import io
 import re
 
-GITHUB_EXCEL_URL = "https://raw.githubusercontent.com/anketaube/LabDatasetsSearchApp/main/DatensetsFilter.xlsx"
+GITHUB_EXCEL_URL = "https://github.com/anketaube/LabDatasetsSearchApp/blob/main/Datensets_Filter.xlsx"
 
 def load_data():
     try:
@@ -260,7 +260,7 @@ def main():
     # CSV-Download (Excel-optimiert)
     csv_file = download_csv(filtered_df)
     st.download_button(
-        label="📥 Ergebnisse als CSV herunterladen (Excel-optimiert)",
+        label="📥 Ergebnisse als CSV herunterladen",
         data=csv_file,
         file_name="dnb_datensets.csv",
         mime="text/csv"
@@ -268,3 +268,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
