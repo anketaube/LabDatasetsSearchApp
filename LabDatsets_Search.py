@@ -60,7 +60,7 @@ def clean_zeitraum_entry(entry):
     return s if s else pd.NA
 
 def get_zeitraum_options(df, zeitraum_col):
-    """Erstellt saubere Auswahl: 1913- (ab), exakte Zeiträume wie 1913-1918"""
+    """Erstellt saubere Auswahl: 1913- (ab), exakte Zeiträume - DUBLIKATE ENTFERNT"""
     if not zeitraum_col:
         return []
     
@@ -75,9 +75,11 @@ def get_zeitraum_options(df, zeitraum_col):
         elif '-' in z_str and len(z_str.split('-')) == 2:
             exakte_zeitraeume.add(z_str)
     
-    ab_options = sorted(list(ab_jahre), key=lambda x: int(x[:-1]))
-    exakt_options = sorted(list(exakte_zeitraeume), key=lambda x: int(x.split('-')[0]))
-    return list(dict.fromkeys(ab_options + exakt_options))
+    # DUBLIKATE explizit entfernen
+    ab_options = sorted(list(set(ab_jahre)), key=lambda x: int(x[:-1]))
+    exakt_options = sorted(list(set(exakte_zeitraeume)), key=lambda x: int(x.split('-')[0]))
+    all_options = list(dict.fromkeys(ab_options + exakt_options))  # Erstes Duplikat behalten
+    return all_options
 
 def filter_by_zeitraum(df, zeitraum_col, selected_options):
     """Filtert '1913-' alle ab 1913, '1913-1918' exakt diesen Zeitraum"""
@@ -108,7 +110,6 @@ def robust_text_search(df, such_text):
     mask = pd.Series([True] * len(df), index=df.index)
     
     for wort in such_worte:
-        # FIX: .values für pure Boolean-Array ohne Index-Probleme
         wort_mask = df.astype(str).apply(
             lambda row: row.str.lower().str.contains(wort, na=False, regex=False).any(), 
             axis=1
@@ -178,10 +179,10 @@ def main():
     with col7:
         st.text_input("Suche in allen Feldern", key='suchfeld', placeholder="Suche eingeben...")
     
-    # Filter anwenden (FIX: Immer mit korrektem Index arbeiten)
+    # Filter anwenden
     filtered_df = df.copy()
     
-    # 1. Kategorie - FIX: reset_index für saubere Boolean-Masks
+    # 1. Kategorie
     selected_kat = st.session_state.get('kategorie', [])
     if selected_kat and kategorie_spalten:
         mask_kategorie = filtered_df[kategorie_spalten].astype(str).isin(selected_kat).any(axis=1)
@@ -228,7 +229,7 @@ def main():
         mask_dateiformat = filtered_df[dateiformat_spalte].apply(dateiformat_match)
         filtered_df = filtered_df[mask_dateiformat].reset_index(drop=True)
     
-    # 7. Textsuche - FIX: Korrekte Index-Ausrichtung
+    # 7. Textsuche
     such_text = st.session_state.get('suchfeld', '').strip()
     if len(filtered_df) > 0:
         mask_suche = robust_text_search(filtered_df, such_text)
@@ -249,10 +250,13 @@ def main():
     if url_spalte:
         column_config[url_spalte] = st.column_config.LinkColumn("URL", width='large', help="Auf Datensatz-Seite gehen")
     
+    # FIX 2: Dynamische Höhe basierend auf Ergebnissen (max. 600px, min. 200px)
+    anzeige_hoehe = min(600, max(200, len(filtered_df) * 35 + 50))
+    
     st.dataframe(
         display_df,
         use_container_width=True,
-        height=600,
+        height=anzeige_hoehe,
         column_config=column_config,
         hide_index=True
     )
