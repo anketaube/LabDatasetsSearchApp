@@ -264,7 +264,7 @@ def main():
     # CSV-Download (Excel-optimiert, immer verfügbar)
     csv_file = download_csv(filtered_df)
     st.download_button(
-        label="📥 Ergebnisse als CSV herunterladen (Excel-optimiert)",
+        label="📥 Ergebnisse als CSV herunterladen",
         data=csv_file,
         file_name="dnb_datensets.csv",
         mime="text/csv"
@@ -272,3 +272,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
