@@ -26,23 +26,14 @@ def load_data():
 
 def download_csv(df):
     """CSV 100% Excel-kompatibel: Semikolon + UTF-8-BOM + Sonderzeichen bereinigt"""
-    # 1. ALLE problematischen Zeichen bereinigen
     df_clean = df.copy()
     for col in df_clean.columns:
         df_clean[col] = df_clean[col].astype(str).str.replace('\u00A0', ' ', regex=False)
         df_clean[col] = df_clean[col].str.replace('\u2009', ' ', regex=False)
         df_clean[col] = df_clean[col].str.replace('\u202F', ' ', regex=False)
-        # Normalisieren + ASCII-only für Excel-Kompatibilität
         df_clean[col] = df_clean[col].str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('ascii')
     
-    # 2. Excel-DE Format
-    csv = df_clean.to_csv(
-        sep=';', 
-        index=False, 
-        encoding='utf-8-sig',
-        na_rep=''
-    )
-    
+    csv = df_clean.to_csv(sep=';', index=False, encoding='utf-8-sig', na_rep='')
     b = io.BytesIO()
     b.write(csv.encode('utf-8-sig'))
     b.seek(0)
@@ -100,7 +91,7 @@ def filter_by_zeitraum(df, zeitraum_col, selected_options):
     for option in selected_options:
         if option.endswith('-'):
             start_jahr = option[:-1]
-            jahres_mask = df_clean[zeitraum_col].astype(str).apply(lambda x: str(x).startswith(start_jahr))
+            jahres_mask = df_clean[zeitraum_col].astype(str).str.startswith(start_jahr)
             mask = mask | jahres_mask
         else:
             exact_mask = df_clean[zeitraum_col].astype(str) == option
@@ -111,13 +102,17 @@ def filter_by_zeitraum(df, zeitraum_col, selected_options):
 def robust_text_search(df, such_text):
     """Erweiterte Textsuche: case-insensitive, Teilstrings, alle Spalten"""
     if not such_text or not such_text.strip():
-        return pd.Series([True] * len(df))
+        return pd.Series([True] * len(df), index=df.index)
     
     such_worte = [w.strip().lower() for w in such_text.split() if w.strip()]
-    mask = pd.Series([True] * len(df))
+    mask = pd.Series([True] * len(df), index=df.index)
     
     for wort in such_worte:
-        wort_mask = df.astype(str).apply(lambda row: row.str.lower().str.contains(wort, na=False, regex=False).any(), axis=1)
+        # FIX: .values für pure Boolean-Array ohne Index-Probleme
+        wort_mask = df.astype(str).apply(
+            lambda row: row.str.lower().str.contains(wort, na=False, regex=False).any(), 
+            axis=1
+        ).reindex(df.index, fill_value=False)
         mask = mask & wort_mask
     
     return mask
@@ -183,60 +178,61 @@ def main():
     with col7:
         st.text_input("Suche in allen Feldern", key='suchfeld', placeholder="Suche eingeben...")
     
-    # Filter anwenden (sequentiell)
+    # Filter anwenden (FIX: Immer mit korrektem Index arbeiten)
     filtered_df = df.copy()
     
-    # 1. Kategorie
+    # 1. Kategorie - FIX: reset_index für saubere Boolean-Masks
     selected_kat = st.session_state.get('kategorie', [])
     if selected_kat and kategorie_spalten:
         mask_kategorie = filtered_df[kategorie_spalten].astype(str).isin(selected_kat).any(axis=1)
-        filtered_df = filtered_df[mask_kategorie]
+        filtered_df = filtered_df[mask_kategorie].reset_index(drop=True)
     
     # 2. Zeitraum
     selected_zeitraum = st.session_state.get('zeitraum', [])
-    if selected_zeitraum and zeitraum_col:
+    if selected_zeitraum and zeitraum_col and len(filtered_df) > 0:
         zeit_df = filter_by_zeitraum(filtered_df, zeitraum_col, selected_zeitraum)
-        filtered_df = filtered_df[filtered_df.index.isin(zeit_df.index)]
+        filtered_df = filtered_df[filtered_df.index.isin(zeit_df.index)].reset_index(drop=True)
     
     # 3. Metadatenformat
     selected_meta = st.session_state.get('metadatenformat', [])
-    if selected_meta and meta_col:
+    if selected_meta and meta_col and len(filtered_df) > 0:
         def meta_match(cell):
             cell_values = [v.strip().lower() for v in str(cell).split(',')]
             return any(sel.strip().lower() in cell_values for sel in selected_meta)
         mask_meta = filtered_df[meta_col].apply(meta_match)
-        filtered_df = filtered_df[mask_meta]
+        filtered_df = filtered_df[mask_meta].reset_index(drop=True)
     
     # 4. Bezugsweg
     selected_bezugsweg = st.session_state.get('bezugsweg', [])
-    if selected_bezugsweg and bezugsweg_col:
+    if selected_bezugsweg and bezugsweg_col and len(filtered_df) > 0:
         def bezugsweg_match(cell):
             cell_values = [v.strip().lower() for v in str(cell).split(',')]
             return any(sel.strip().lower() in cell_values for sel in selected_bezugsweg)
         mask_bezugsweg = filtered_df[bezugsweg_col].apply(bezugsweg_match)
-        filtered_df = filtered_df[mask_bezugsweg]
+        filtered_df = filtered_df[mask_bezugsweg].reset_index(drop=True)
     
     # 5. Volltext
     selected_volltext = [v for v in volltext_werte if st.session_state.get(f'volltext_{v}', False)]
-    if selected_volltext and volltext_spalte:
+    if selected_volltext and volltext_spalte and len(filtered_df) > 0:
         def volltext_match(cell):
             return all(v.strip() in str(cell).split(',') for v in selected_volltext)
         mask_volltext = filtered_df[volltext_spalte].apply(volltext_match)
-        filtered_df = filtered_df[mask_volltext]
+        filtered_df = filtered_df[mask_volltext].reset_index(drop=True)
     
     # 6. Dateiformat
     selected_dateiformat = st.session_state.get('dateiformat', [])
-    if selected_dateiformat and dateiformat_spalte:
+    if selected_dateiformat and dateiformat_spalte and len(filtered_df) > 0:
         def dateiformat_match(cell):
             cell_values = [v.strip().lower() for v in str(cell).split(',')]
             return any(sel.strip().lower() in cell_values for sel in selected_dateiformat)
         mask_dateiformat = filtered_df[dateiformat_spalte].apply(dateiformat_match)
-        filtered_df = filtered_df[mask_dateiformat]
+        filtered_df = filtered_df[mask_dateiformat].reset_index(drop=True)
     
-    # 7. Textsuche
+    # 7. Textsuche - FIX: Korrekte Index-Ausrichtung
     such_text = st.session_state.get('suchfeld', '').strip()
-    mask_suche = robust_text_search(filtered_df, such_text)
-    filtered_df = filtered_df[mask_suche]
+    if len(filtered_df) > 0:
+        mask_suche = robust_text_search(filtered_df, such_text)
+        filtered_df = filtered_df[mask_suche].reset_index(drop=True)
     
     # Ergebnisse anzeigen
     display_df = filtered_df.drop(columns=kategorie_spalten, errors='ignore')
@@ -261,10 +257,10 @@ def main():
         hide_index=True
     )
     
-    # CSV-Download (Excel-optimiert, immer verfügbar)
+    # CSV-Download (Excel-optimiert)
     csv_file = download_csv(filtered_df)
     st.download_button(
-        label="📥 Ergebnisse als CSV herunterladen",
+        label="📥 Ergebnisse als CSV herunterladen (Excel-optimiert)",
         data=csv_file,
         file_name="dnb_datensets.csv",
         mime="text/csv"
@@ -272,4 +268,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
