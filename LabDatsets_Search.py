@@ -5,7 +5,7 @@ from io import BytesIO
 import io
 import re
 
-GITHUB_EXCEL_URL = "https://github.com/anketaube/LabDatasetsSearchApp/blob/main/Datensets_Filter.xlsx"
+GITHUB_EXCEL_URL = "https://raw.githubusercontent.com/anketaube/LabDatasetsSearchApp/main/Datensets_Filter.xlsx"
 
 def load_data():
     try:
@@ -268,4 +268,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
