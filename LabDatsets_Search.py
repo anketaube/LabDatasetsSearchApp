@@ -281,7 +281,7 @@ def main():
         hide_index=True
     )
 
-    csv_file = download_csv(filtered_df)
+    csvfile = downloadcsv(filtered_df)
     st.download_button(
         label="Ergebnisse als CSV herunterladen",
         data=csv_file,
@@ -291,6 +291,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
