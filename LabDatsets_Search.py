@@ -25,19 +25,36 @@ def load_data():
         return None
 
 def download_csv(df):
-    """CSV 100% Excel-kompatibel: Semikolon + UTF-8-BOM + Sonderzeichen bereinigt"""
+    """CSV UTF‑8(-BOM) konform, Umlaute bleiben erhalten, Steuerzeichen bereinigt"""
     df_clean = df.copy()
+
     for col in df_clean.columns:
-        df_clean[col] = df_clean[col].astype(str).str.replace('\u00A0', ' ', regex=False)
-        df_clean[col] = df_clean[col].str.replace('\u2009', ' ', regex=False)
-        df_clean[col] = df_clean[col].str.replace('\u202F', ' ', regex=False)
-        df_clean[col] = df_clean[col].str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('ascii')
-    
-    csv = df_clean.to_csv(sep=';', index=False, encoding='utf-8-sig', na_rep='')
-    b = io.BytesIO()
-    b.write(csv.encode('utf-8-sig'))
-    b.seek(0)
-    return b.getvalue()
+        # alles als String
+        df_clean[col] = df_clean[col].astype(str)
+
+        # geschützte/schmalen Leerzeichen auf normales Leerzeichen
+        df_clean[col] = (df_clean[col]
+                         .str.replace('\u00A0', ' ', regex=False)
+                         .str.replace('\u2009', ' ', regex=False)
+                         .str.replace('\u202F', ' ', regex=False))
+
+        # typographische Bindestriche auf normalen ASCII-Minus
+        df_clean[col] = (df_clean[col]
+                         .str.replace('\u2010', '-', regex=False)  # hyphen
+                         .str.replace('\u2011', '-', regex=False)  # non-breaking hyphen
+                         .str.replace('\u2012', '-', regex=False)  # figure dash
+                         .str.replace('\u2013', '-', regex=False)  # en dash
+                         .str.replace('\u2014', '-', regex=False)  # em dash
+                         .str.replace('\u2212', '-', regex=False)) # minus sign
+
+        # WICHTIG: keine NFKD/ASCII-Normalisierung mehr, damit Umlaute erhalten bleiben
+        # df_clean[col] = df_clean[col].str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('ascii')
+
+    # UTF‑8 mit BOM (utf-8-sig) für Excel, Semikolon als Trennzeichen
+    csv_text = df_clean.to_csv(sep=';', index=False, encoding='utf-8-sig', na_rep='')
+
+    # als Bytes an download_button übergeben
+    return csv_text.encode('utf-8-sig')
 
 def extract_unique_multiselect_options(series):
     """Extrahiert einzigartige Werte aus komma-getrennten Feldern"""
@@ -48,14 +65,26 @@ def extract_unique_multiselect_options(series):
     return sorted(unique_values)
 
 def clean_zeitraum_entry(entry):
-    """Bereinigt Zeiträume aggressiv für saubere Anzeige"""
+    """Bereinigt Zeiträume aggressiv für saubere Anzeige und einheitliche Bindestriche"""
     if pd.isna(entry):
         return entry
     s = str(entry)
+
+    # geschützte/Schmal-Leerzeichen
     s = s.replace('\u00A0', ' ').replace('\u2009', ' ').replace('\u202F', ' ')
-    s = re.sub(r'[^\d\s\-\–—]', '', s)
+
+    # alle Bindestrich-Varianten auf normalen Minus
+    s = (s.replace('\u2010', '-')
+           .replace('\u2011', '-')
+           .replace('\u2012', '-')
+           .replace('\u2013', '-')
+           .replace('\u2014', '-')
+           .replace('\u2212', '-'))
+
+    # nur Ziffern, Leerzeichen, Minus behalten
+    s = re.sub(r'[^\d\s\-]', '', s)
     s = re.sub(r'\s+', ' ', s)
-    s = re.sub(r'[-–—]\s*', '-', s)
+    s = re.sub(r'-\s*', '-', s)
     s = s.strip()
     return s if s else pd.NA
 
@@ -108,7 +137,6 @@ def robust_text_search(df, such_text):
     mask = pd.Series([True] * len(df), index=df.index)
     
     for wort in such_worte:
-        # FIX: .values für pure Boolean-Array ohne Index-Probleme
         wort_mask = df.astype(str).apply(
             lambda row: row.str.lower().str.contains(wort, na=False, regex=False).any(), 
             axis=1
@@ -178,10 +206,10 @@ def main():
     with col7:
         st.text_input("Suche in allen Feldern", key='suchfeld', placeholder="Suche eingeben...")
     
-    # Filter anwenden (FIX: Immer mit korrektem Index arbeiten)
+    # Filter anwenden
     filtered_df = df.copy()
     
-    # 1. Kategorie - FIX: reset_index für saubere Boolean-Masks
+    # 1. Kategorie
     selected_kat = st.session_state.get('kategorie', [])
     if selected_kat and kategorie_spalten:
         mask_kategorie = filtered_df[kategorie_spalten].astype(str).isin(selected_kat).any(axis=1)
@@ -228,7 +256,7 @@ def main():
         mask_dateiformat = filtered_df[dateiformat_spalte].apply(dateiformat_match)
         filtered_df = filtered_df[mask_dateiformat].reset_index(drop=True)
     
-    # 7. Textsuche - FIX: Korrekte Index-Ausrichtung
+    # 7. Textsuche
     such_text = st.session_state.get('suchfeld', '').strip()
     if len(filtered_df) > 0:
         mask_suche = robust_text_search(filtered_df, such_text)
@@ -257,7 +285,7 @@ def main():
         hide_index=True
     )
     
-    # CSV-Download (Excel-optimiert)
+    # CSV-Download
     csv_file = download_csv(filtered_df)
     st.download_button(
         label="📥 Ergebnisse als CSV herunterladen",
@@ -266,7 +294,4 @@ def main():
         mime="text/csv"
     )
 
-if __name__ == "__main__":
-    main()
-
-
+if __name__ ==
