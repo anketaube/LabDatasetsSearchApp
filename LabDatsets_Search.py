@@ -152,7 +152,7 @@ def main():
     with cols[0]:
         st.markdown("""
             <div style="display: flex; align-items: center; height: 80px;">
-                <img src="https://portal.dnb.de/static/bilder/logo.gif" style="height: 75px; margin-right: 5px;">
+                <img src="https://github.com/anketaube/LabDatasetsSearchApp/blob/main/logo.gif" style="height: 75px; margin-right: 5px;">
             </div>
         """, unsafe_allow_html=True)
     with cols[1]:
