@@ -138,7 +138,7 @@ def main():
 
     cols = st.columns([1, 6])
     with cols[0]:
-        st.image(LOGO_URL, width=75)
+        st.image(LOGO_URL, width=150)
     with cols[1]:
         st.markdown('<h1 style="margin: 0; line-height: 80px;">DNBLab Datensetsuche</h1>', unsafe_allow_html=True)
 
